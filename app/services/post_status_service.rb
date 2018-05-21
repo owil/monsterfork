@@ -13,6 +13,7 @@ class PostStatusService < BaseService
   # @option [Status] :thread Optional status to reply to
   # @option [Boolean] :sensitive
   # @option [String] :visibility
+  # @option [Boolean] :local_only
   # @option [String] :spoiler_text
   # @option [String] :title
   # @option [String] :footer
@@ -215,6 +216,7 @@ class PostStatusService < BaseService
       title: @options[:title],
       footer: @options[:footer],
       visibility: @visibility,
+      local_only: @options[:local_only],
       language: language_from_option(@options[:language]) || @account.user&.setting_default_language&.presence || LanguageDetector.instance.detect(@text, @account),
       application: @options[:application],
       published: @options[:publish],
