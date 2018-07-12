@@ -63,6 +63,8 @@ class ComposeForm extends ImmutablePureComponent {
     layout: PropTypes.string,
     media: ImmutablePropTypes.list,
     sideArm: PropTypes.string,
+    sideArmWarning: PropTypes.bool,
+    privacyWarning: PropTypes.bool,
     sensitive: PropTypes.bool,
     spoilersAlwaysOn: PropTypes.bool,
     mediaDescriptionConfirmation: PropTypes.bool,
@@ -287,9 +289,11 @@ class ComposeForm extends ImmutablePureComponent {
       onFetchSuggestions,
       onPaste,
       privacy,
+      privacyWarning,
       sensitive,
       showSearch,
       sideArm,
+      sideArmWarning,
       spoiler,
       spoilerText,
       suggestions,
@@ -373,7 +377,9 @@ class ComposeForm extends ImmutablePureComponent {
           onSubmit={handleSubmit}
           onClearAll={handleClearAll}
           privacy={privacy}
+          privacyWarning={privacyWarning}
           sideArm={sideArm}
+          sideArmWarning={sideArmWarning}
         />
       </div>
     );
