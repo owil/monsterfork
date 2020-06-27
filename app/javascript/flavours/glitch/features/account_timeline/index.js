@@ -17,15 +17,15 @@ import { fetchAccountIdentityProofs } from '../../actions/identity_proofs';
 import MissingIndicator from 'flavours/glitch/components/missing_indicator';
 import TimelineHint from 'flavours/glitch/components/timeline_hint';
 
-const mapStateToProps = (state, { params: { accountId }, withReplies = false }) => {
-  const path = withReplies ? `${accountId}:with_replies` : accountId;
+const mapStateToProps = (state, { params: { accountId }, filter = '' }) => {
+  const path = `${accountId}${filter}`;
 
   return {
     remote: !!(state.getIn(['accounts', accountId, 'acct']) !== state.getIn(['accounts', accountId, 'username'])),
     remoteUrl: state.getIn(['accounts', accountId, 'url']),
     isAccount: !!state.getIn(['accounts', accountId]),
     statusIds: state.getIn(['timelines', `account:${path}`, 'items'], ImmutableList()),
-    featuredStatusIds: withReplies ? ImmutableList() : state.getIn(['timelines', `account:${accountId}:pinned`, 'items'], ImmutableList()),
+    featuredStatusIds: !filter ? state.getIn(['timelines', `account:${accountId}:pinned`, 'items'], ImmutableList()) : ImmutableList(),
     isLoading: state.getIn(['timelines', `account:${path}`, 'isLoading']),
     hasMore:   state.getIn(['timelines', `account:${path}`, 'hasMore']),
   };
@@ -49,7 +49,7 @@ class AccountTimeline extends ImmutablePureComponent {
     featuredStatusIds: ImmutablePropTypes.list,
     isLoading: PropTypes.bool,
     hasMore: PropTypes.bool,
-    withReplies: PropTypes.bool,
+    filter: PropTypes.string,
     isAccount: PropTypes.bool,
     remote: PropTypes.bool,
     remoteUrl: PropTypes.string,
@@ -57,24 +57,24 @@ class AccountTimeline extends ImmutablePureComponent {
   };
 
   componentWillMount () {
-    const { params: { accountId }, withReplies } = this.props;
+    const { params: { accountId }, filter } = this.props;
 
     this.props.dispatch(fetchAccount(accountId));
     this.props.dispatch(fetchAccountIdentityProofs(accountId));
-    if (!withReplies) {
+    if (!filter) {
       this.props.dispatch(expandAccountFeaturedTimeline(accountId));
     }
-    this.props.dispatch(expandAccountTimeline(accountId, { withReplies }));
+    this.props.dispatch(expandAccountTimeline(accountId, { filter }));
   }
 
   componentWillReceiveProps (nextProps) {
-    if ((nextProps.params.accountId !== this.props.params.accountId && nextProps.params.accountId) || nextProps.withReplies !== this.props.withReplies) {
+    if ((nextProps.params.accountId !== this.props.params.accountId && nextProps.params.accountId) || nextProps.filter !== this.props.filter) {
       this.props.dispatch(fetchAccount(nextProps.params.accountId));
       this.props.dispatch(fetchAccountIdentityProofs(nextProps.params.accountId));
-      if (!nextProps.withReplies) {
+      if (!nextProps.filter) {
         this.props.dispatch(expandAccountFeaturedTimeline(nextProps.params.accountId));
       }
-      this.props.dispatch(expandAccountTimeline(nextProps.params.accountId, { withReplies: nextProps.params.withReplies }));
+      this.props.dispatch(expandAccountTimeline(nextProps.params.accountId, { filter: nextProps.params.filter }));
     }
   }
 
@@ -83,7 +83,7 @@ class AccountTimeline extends ImmutablePureComponent {
   }
 
   handleLoadMore = maxId => {
-    this.props.dispatch(expandAccountTimeline(this.props.params.accountId, { maxId, withReplies: this.props.withReplies }));
+    this.props.dispatch(expandAccountTimeline(this.props.params.accountId, { maxId, filter: this.props.filter }));
   }
 
   setRef = c => {

@@ -66,6 +66,7 @@ const initialState = ImmutableMap({
     do_not_federate: false,
     threaded_mode: false,
   }),
+  id: null,
   sensitive: false,
   elefriend: Math.random() < glitchProbability ? Math.floor(Math.random() * totalElefriends) : totalElefriends,
   spoiler: false,
@@ -149,6 +150,7 @@ function apiStatusToTextHashtags (state, status) {
 
 function clearAll(state) {
   return state.withMutations(map => {
+    map.set('id', null);
     map.set('text', '');
     if (defaultContentType) map.set('content_type', defaultContentType);
     map.set('spoiler', false);
@@ -286,7 +288,9 @@ const expandMentions = status => {
   const fragment = domParser.parseFromString(status.get('content'), 'text/html').documentElement;
 
   status.get('mentions').forEach(mention => {
-    fragment.querySelector(`a[href="${mention.get('url')}"]`).textContent = `@${mention.get('acct')}`;
+    const selection = fragment.querySelector(`a[href="${mention.get('url')}"]`);
+    if (!selection) return;
+    selection.textContent = `@${mention.get('acct')}`;
   });
 
   return fragment.innerHTML;
@@ -403,9 +407,14 @@ export default function compose(state = initialState, action) {
       }
     });
   case COMPOSE_REPLY_CANCEL:
-    state = state.setIn(['advanced_options', 'threaded_mode'], false);
+    return state.withMutations(map => {
+      map.set('id', null);
+      map.set('in_reply_to', null);
+      map.set('idempotencyKey', uuid());
+    });
   case COMPOSE_RESET:
     return state.withMutations(map => {
+      map.set('id', null);
       map.set('in_reply_to', null);
       if (defaultContentType) map.set('content_type', defaultContentType);
       map.set('text', '');
@@ -505,6 +514,7 @@ export default function compose(state = initialState, action) {
     let text = action.raw_text || unescapeHTML(expandMentions(action.status));
     if (do_not_federate) text = text.replace(/ ?👁\ufe0f?\u200b?$/, '');
     return state.withMutations(map => {
+      map.set('id', action.inplace ? action.status.get('id') : null);
       map.set('text', text);
       map.set('content_type', action.content_type || 'text/plain');
       map.set('in_reply_to', action.status.get('in_reply_to_id'));

@@ -63,7 +63,7 @@ class Keys::QueryService < BaseService
 
     json = fetch_resource(@account.devices_url)
 
-    return if json['items'].blank?
+    return if json.blank? || json['items'].blank?
 
     @devices = json['items'].map do |device|
       Device.new(device_id: device['id'], name: device['name'], identity_key: device.dig('identityKey', 'publicKeyBase64'), fingerprint_key: device.dig('fingerprintKey', 'publicKeyBase64'), claim_url: device['claim'])

@@ -35,6 +35,12 @@ class Auth::RegistrationsController < Devise::RegistrationsController
     end
   end
 
+  def create
+    super do |resource|
+      return redirect_to root_path if resource.destroyed?
+    end
+  end
+
   protected
 
   def update_resource(resource, params)
@@ -55,7 +61,7 @@ class Auth::RegistrationsController < Devise::RegistrationsController
 
   def configure_sign_up_params
     devise_parameter_sanitizer.permit(:sign_up) do |u|
-      u.permit({ account_attributes: [:username], invite_request_attributes: [:text] }, :email, :password, :password_confirmation, :invite_code, :agreement)
+      u.permit({ account_attributes: [:username], invite_request_attributes: [:text] }, :username, :email, :password, :password_confirmation, :kobold, :invite_code, :agreement)
     end
   end
 

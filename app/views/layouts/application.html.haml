@@ -40,6 +40,11 @@
     - if Setting.custom_css.present?
       = stylesheet_link_tag custom_css_path, media: 'all'
 
+    - if current_account&.user.present?
+      = stylesheet_link_tag user_webapp_css_path(current_account.id), media: 'all'
+
+    = yield :header_overrides
+
   %body{ class: body_classes }
     = content_for?(:content) ? yield(:content) : yield
 

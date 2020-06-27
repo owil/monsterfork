@@ -79,6 +79,8 @@ defaults: &defaults
   show_domain_blocks_rationale: 'disabled'
   outgoing_spoilers: ''
 
+  show_domain_allows: 'disabled'
+
 development:
   <<: *defaults
 

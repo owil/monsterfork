@@ -4,16 +4,14 @@ class AboutController < ApplicationController
   before_action :set_pack
   layout 'public'
 
-  before_action :require_open_federation!, only: [:show, :more]
+  #before_action :require_open_federation!, only: [:show, :more]
   before_action :set_body_classes, only: :show
   before_action :set_instance_presenter
   before_action :set_expires_in, only: [:show, :more, :terms]
 
   skip_before_action :require_functional!, only: [:more, :terms]
 
-  def show; end
-
-  def more
+  def show
     flash.now[:notice] = I18n.t('about.instance_actor_flash') if params[:instance_actor]
 
     toc_generator = TOCGenerator.new(@instance_presenter.site_extended_description)
@@ -21,9 +19,14 @@ class AboutController < ApplicationController
     @contents          = toc_generator.html
     @table_of_contents = toc_generator.toc
     @blocks            = DomainBlock.with_user_facing_limitations.by_severity if display_blocks?
+    @allows            = DomainAllow.where(hidden: false) if display_allows?
   end
 
+  alias more show
+
   def terms; end
+
+  helper_method :display_allows?
 
   helper_method :display_blocks?
   helper_method :display_blocks_rationale?
@@ -65,5 +68,11 @@ class AboutController < ApplicationController
 
   def set_expires_in
     expires_in 0, public: true
+  end
+
+  # Monsterfork additions
+
+  def display_allows?
+    Setting.show_domain_allows == 'all' || (Setting.show_domain_allows == 'users' && user_signed_in?)
   end
 end

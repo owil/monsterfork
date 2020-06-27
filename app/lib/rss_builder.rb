@@ -35,6 +35,12 @@ class RSSBuilder
       self
     end
 
+    def content(str)
+      @item << (Ox::Element.new('content:encoded') << str)
+
+      self
+    end
+
     def enclosure(url, type, size)
       @item << Ox::Element.new('enclosure').tap do |enclosure|
         enclosure['url']    = url

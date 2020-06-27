@@ -8,7 +8,9 @@ class StatusesController < ApplicationController
 
   layout 'public'
 
-  before_action :require_signature!, only: :show, if: -> { request.format == :json && authorized_fetch_mode? }
+  before_action :require_signature!, only: :show, if: -> { request.format == :json && authorized_fetch_mode? && current_user&.account_id != @account.id }
+  before_action :require_authenticated!, if: -> { @account.require_auth? }
+  before_action -> { require_following!(@account) }, if: -> { request.format != :json && @account.private? }
   before_action :set_status
   before_action :set_instance_presenter
   before_action :set_link_headers
@@ -19,7 +21,7 @@ class StatusesController < ApplicationController
   before_action :set_autoplay, only: :embed
 
   skip_around_action :set_locale, if: -> { request.format == :json }
-  skip_before_action :require_functional!, only: [:show, :embed], unless: :whitelist_mode?
+  skip_before_action :require_functional!, only: [:show, :embed] # , unless: :whitelist_mode?
 
   content_security_policy only: :embed do |p|
     p.frame_ancestors(false)
@@ -37,14 +39,18 @@ class StatusesController < ApplicationController
 
       format.json do
         expires_in 3.minutes, public: @status.distributable? && public_fetch_mode?
-        render_with_cache json: @status, content_type: 'application/activity+json', serializer: ActivityPub::NoteSerializer, adapter: ActivityPub::Adapter
+        render_with_cache json: @status, content_type: 'application/activity+json', serializer: ActivityPub::NoteSerializer, adapter: ActivityPub::Adapter, target_domain: current_account&.domain
       end
     end
   end
 
   def activity
     expires_in 3.minutes, public: @status.distributable? && public_fetch_mode?
-    render_with_cache json: ActivityPub::ActivityPresenter.from_status(@status), content_type: 'application/activity+json', serializer: ActivityPub::ActivitySerializer, adapter: ActivityPub::Adapter
+    render_with_cache json: ActivityPub::ActivityPresenter.from_status(@status),
+                      content_type: 'application/activity+json',
+                      serializer: ActivityPub::ActivitySerializer,
+                      adapter: ActivityPub::Adapter,
+                      target_domain: current_account&.domain
   end
 
   def embed

@@ -35,6 +35,6 @@ class Admin::DomainAllowsController < Admin::BaseController
   end
 
   def resource_params
-    params.require(:domain_allow).permit(:domain)
+    params.require(:domain_allow).permit(:domain, :hidden)
   end
 end

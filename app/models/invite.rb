@@ -35,7 +35,7 @@ class Invite < ApplicationRecord
 
   def set_code
     loop do
-      self.code = ([*('a'..'z'), *('A'..'Z'), *('0'..'9')] - %w(0 1 I l O)).sample(8).join
+      self.code = ([*('a'..'z'), *('A'..'Z'), *('0'..'9')] - %w(0 1 I l O)).sample(16).join
       break if Invite.find_by(code: code).nil?
     end
   end

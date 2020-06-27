@@ -25,7 +25,7 @@ module AccountInteractions
     end
 
     def muting_map(target_account_ids, account_id)
-      Mute.where(target_account_id: target_account_ids, account_id: account_id).each_with_object({}) do |mute, mapping|
+      Mute.where(target_account_id: target_account_ids, account_id: account_id, timelines_only: false).each_with_object({}) do |mute, mapping|
         mapping[mute.target_account_id] = {
           notifications: mute.hide_notifications?,
         }
@@ -90,9 +90,10 @@ module AccountInteractions
     has_many :muting, -> { order('mutes.id desc') }, through: :mute_relationships, source: :target_account
     has_many :muted_by_relationships, class_name: 'Mute', foreign_key: :target_account_id, dependent: :destroy
     has_many :muted_by, -> { order('mutes.id desc') }, through: :muted_by_relationships, source: :account
-    has_many :conversation_mutes, dependent: :destroy
+    has_many :conversation_mutes, inverse_of: :account, dependent: :destroy
     has_many :domain_blocks, class_name: 'AccountDomainBlock', dependent: :destroy
     has_many :announcement_mutes, dependent: :destroy
+    has_many :status_mutes, inverse_of: :account, dependent: :destroy
   end
 
   def follow!(other_account, reblogs: nil, uri: nil, rate_limit: false)
@@ -125,21 +126,22 @@ module AccountInteractions
                        .find_or_create_by!(target_account: other_account)
   end
 
-  def mute!(other_account, notifications: nil)
+  def mute!(other_account, notifications: nil, timelines_only: nil)
     notifications = true if notifications.nil?
-    mute = mute_relationships.create_with(hide_notifications: notifications).find_or_create_by!(target_account: other_account)
+    timelines_only = false if timelines_only.nil?
+    mute = mute_relationships.create_with(hide_notifications: notifications, timelines_only: timelines_only).find_or_create_by!(target_account: other_account)
     remove_potential_friendship(other_account)
 
     # When toggling a mute between hiding and allowing notifications, the mute will already exist, so the find_or_create_by! call will return the existing Mute without updating the hide_notifications attribute. Therefore, we check that hide_notifications? is what we want and set it if it isn't.
-    if mute.hide_notifications? != notifications
-      mute.update!(hide_notifications: notifications)
-    end
+    mute.update!(hide_notifications: notifications, timelines_only: timelines_only) if mute.hide_notifications? != notifications
 
     mute
   end
 
-  def mute_conversation!(conversation)
-    conversation_mutes.find_or_create_by!(conversation: conversation)
+  def mute_conversation!(conversation, hidden: false)
+    mute = conversation_mutes.find_or_create_by!(conversation: conversation)
+    mute.update(hidden: hidden) if hidden.present? && mute.hidden? != hidden
+    mute
   end
 
   def block_domain!(other_domain)
@@ -171,6 +173,15 @@ module AccountInteractions
     block&.destroy
   end
 
+  def mute_status!(status)
+    status_mutes.find_or_create_by!(status: status)
+  end
+
+  def unmute_status!(status)
+    mute = status_mutes.find_by(status: status)
+    mute&.destroy
+  end
+
   def following?(other_account)
     active_relationships.where(target_account: other_account).exists?
   end
@@ -184,11 +195,15 @@ module AccountInteractions
   end
 
   def muting?(other_account)
-    mute_relationships.where(target_account: other_account).exists?
+    mute_relationships.where(target_account: other_account, timelines_only: false).exists?
   end
 
   def muting_conversation?(conversation)
     conversation_mutes.where(conversation: conversation).exists?
+  end
+
+  def hiding_conversation?(conversation)
+    conversation_mutes.where(conversation: conversation, hidden: true).exists?
   end
 
   def muting_notifications?(other_account)
@@ -197,6 +212,10 @@ module AccountInteractions
 
   def muting_reblogs?(other_account)
     active_relationships.where(target_account: other_account, show_reblogs: false).exists?
+  end
+
+  def muting_status?(status)
+    status_mutes.where(status: status).exists?
   end
 
   def requested?(other_account)

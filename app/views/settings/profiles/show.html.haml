@@ -24,14 +24,37 @@
   %hr.spacer/
 
   .fields-group
-    = f.input :locked, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.locked')
+    = f.input :bot, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.bot')
+  
+  %h4= t 'settings.profiles.privacy'
+
+  %p.hint= t 'settings.profiles.privacy_html'
 
   .fields-group
-    = f.input :bot, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.bot')
+    = f.input :locked, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.locked')
 
   - if Setting.profile_directory
     .fields-group
-      = f.input :discoverable, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.discoverable'), recommended: true
+      = f.input :discoverable, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.discoverable')
+
+  .fields-group
+    = f.input :show_replies, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.show_replies')
+  
+  .fields-group
+    = f.input :show_unlisted, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.show_unlisted')
+
+  .fields-group
+    = f.input :private, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.private')
+
+  .fields-group
+    = f.input :require_auth, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.require_auth')
+
+  %h4= t 'settings.profiles.advanced_privacy'
+
+  %p.hint= t 'settings.profiles.advanced_privacy_html'
+
+  .fields-group
+    = f.input :require_dereference, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.require_dereference_html')
 
   %hr.spacer/
 

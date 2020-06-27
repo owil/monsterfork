@@ -29,7 +29,10 @@ class FollowRequest < ApplicationRecord
 
   def authorize!
     account.follow!(target_account, reblogs: show_reblogs, uri: uri)
-    MergeWorker.perform_async(target_account.id, account.id) if account.local?
+    if account.local?
+      MergeWorker.perform_async(target_account.id, account.id)
+      ActivityPub::SyncAccountWorker.perform_async(target_account.id, every_page: true) unless target_account.local?
+    end
     destroy!
   end
 

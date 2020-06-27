@@ -11,6 +11,7 @@ class Settings::PreferencesController < Settings::BaseController
     user_settings.update(user_settings_params.to_h)
 
     if current_user.update(user_params)
+      Rails.cache.delete("filter_settings:#{current_user.account_id}")
       I18n.locale = current_user.locale
       redirect_to after_update_redirect_path, notice: I18n.t('generic.changes_saved_msg')
     else
@@ -61,6 +62,21 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_use_pending_items,
       :setting_trends,
       :setting_crop_images,
+      :setting_manual_publish,
+      :setting_style_dashed_nest,
+      :setting_style_underline_a,
+      :setting_style_css_profile,
+      :setting_style_css_webapp,
+      :setting_style_wide_media,
+      :setting_publish_in,
+      :setting_unpublish_in,
+      :setting_unpublish_delete,
+      :setting_boost_every,
+      :setting_boost_jitter,
+      :setting_boost_random,
+      :setting_filter_to_unknown,
+      :setting_filter_from_unknown,
+      :setting_unpublish_on_delete,
       notification_emails: %i(follow follow_request reblog favourite mention digest report pending_account trending_tag),
       interactions: %i(must_be_follower must_be_following must_be_following_dm)
     )

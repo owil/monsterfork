@@ -2,6 +2,7 @@
 
 class ActivityPub::Activity::Update < ActivityPub::Activity
   SUPPORTED_TYPES = %w(Application Group Organization Person Service).freeze
+  SUPPORTED_OBJECT_TYPES = (ActivityPub::Activity::SUPPORTED_TYPES + ActivityPub::Activity::CONVERTED_TYPES).freeze
 
   def perform
     dereference_object!
@@ -10,6 +11,9 @@ class ActivityPub::Activity::Update < ActivityPub::Activity
       update_account
     elsif equals_or_includes_any?(@object['type'], %w(Question))
       update_poll
+    elsif equals_or_includes_any?(@object['type'], SUPPORTED_OBJECT_TYPES)
+      @options[:update] = true
+      ActivityPub::Activity::Create.new(@json, @account, @options).perform
     end
   end
 

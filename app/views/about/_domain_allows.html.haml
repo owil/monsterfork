@@ -1,0 +1,12 @@
+%table
+  %thead
+    %tr
+      %th{colspan: 3}= t('about.unavailable_content_description.domain')
+  %tbody
+    - domain_allows.in_groups_of(3) do |group|
+      %tr
+      - group.each do |domain_allow|
+        %td.nowrap
+          - unless domain_allow.nil?
+            %span
+              %a{ title: domain_allow.domain, href: "https://#{domain_allow.domain}", rel: 'noopener nofollow' }= domain_allow.domain

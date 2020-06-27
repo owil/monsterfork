@@ -26,6 +26,7 @@
 #  thumbnail_file_size         :integer
 #  thumbnail_updated_at        :datetime
 #  thumbnail_remote_url        :string
+#  inline                      :boolean          default(FALSE), not null
 #
 
 class MediaAttachment < ApplicationRecord
@@ -34,7 +35,7 @@ class MediaAttachment < ApplicationRecord
   enum type: [:image, :gifv, :video, :unknown, :audio]
   enum processing: [:queued, :in_progress, :complete, :failed], _prefix: true
 
-  MAX_DESCRIPTION_LENGTH = 1_500
+  MAX_DESCRIPTION_LENGTH = 2_000
 
   IMAGE_FILE_EXTENSIONS = %w(.jpg .jpeg .png .gif).freeze
   VIDEO_FILE_EXTENSIONS = %w(.webm .mp4 .m4v .mov).freeze
@@ -59,12 +60,12 @@ class MediaAttachment < ApplicationRecord
 
   IMAGE_STYLES = {
     original: {
-      pixels: 1_638_400, # 1280x1280px
+      pixels: 16_777_216, # 4096x4096px
       file_geometry_parser: FastGeometryParser,
     }.freeze,
 
     small: {
-      pixels: 160_000, # 400x400px
+      pixels: 250_000, # 500x500px
       file_geometry_parser: FastGeometryParser,
       blurhash: BLURHASH_OPTIONS,
     }.freeze,
@@ -81,8 +82,8 @@ class MediaAttachment < ApplicationRecord
         'vf' => 'scale=\'trunc(iw/2)*2:trunc(ih/2)*2\'',
         'vsync' => 'cfr',
         'c:v' => 'h264',
-        'maxrate' => '1300K',
-        'bufsize' => '1300K',
+        'maxrate' => '2M',
+        'bufsize' => '2M',
         'frames:v' => 60 * 60 * 3,
         'crf' => 18,
         'map_metadata' => '-1',
@@ -112,7 +113,7 @@ class MediaAttachment < ApplicationRecord
       convert_options: {
         output: {
           'loglevel' => 'fatal',
-          vf: 'scale=\'min(400\, iw):min(400\, ih)\':force_original_aspect_ratio=decrease',
+          vf: 'scale=\'min(500\, iw):min(500\, ih)\':force_original_aspect_ratio=decrease',
         }.freeze,
       }.freeze,
       format: 'png',
@@ -131,7 +132,7 @@ class MediaAttachment < ApplicationRecord
       convert_options: {
         output: {
           'loglevel' => 'fatal',
-          'q:a' => 2,
+          'q:a' => 0,
         }.freeze,
       }.freeze,
     }.freeze,
@@ -147,7 +148,7 @@ class MediaAttachment < ApplicationRecord
   }.freeze
 
   GLOBAL_CONVERT_OPTIONS = {
-    all: '-quality 90 -strip +set modify-date +set create-date',
+    all: '-quality 95 -strip +set modify-date +set create-date',
   }.freeze
 
   IMAGE_LIMIT = (ENV['MAX_IMAGE_SIZE'] || 10.megabytes).to_i
@@ -159,6 +160,8 @@ class MediaAttachment < ApplicationRecord
   belongs_to :account,          inverse_of: :media_attachments, optional: true
   belongs_to :status,           inverse_of: :media_attachments, optional: true
   belongs_to :scheduled_status, inverse_of: :media_attachments, optional: true
+
+  has_many :inlines, class_name: 'InlineMediaAttachment', inverse_of: :media_attachment, dependent: :destroy
 
   has_attached_file :file,
                     styles: ->(f) { file_styles f },
@@ -189,13 +192,16 @@ class MediaAttachment < ApplicationRecord
   validates :file, presence: true, if: :local?
   validates :thumbnail, absence: true, if: -> { local? && !audio_or_video? }
 
-  scope :attached,   -> { where.not(status_id: nil).or(where.not(scheduled_status_id: nil)) }
-  scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil) }
-  scope :local,      -> { where(remote_url: '') }
-  scope :remote,     -> { where.not(remote_url: '') }
+  scope :attached,   -> { all_media.where.not(status_id: nil).or(all_media.where.not(scheduled_status_id: nil)) }
+  scope :unattached, -> { all_media.where(status_id: nil, scheduled_status_id: nil) }
+  scope :uninlined,  -> { where(inline: false) }
+  scope :inlined,    -> { rewhere(inline: true) }
+  scope :all_media,  -> { unscope(where: :inline) }
+  scope :local,      -> { all_media.where(remote_url: '') }
+  scope :remote,     -> { all_media.where.not(remote_url: '') }
   scope :cached,     -> { remote.where.not(file_file_name: nil) }
 
-  default_scope { order(id: :asc) }
+  default_scope { uninlined.order(id: :asc) }
 
   def local?
     remote_url.blank?

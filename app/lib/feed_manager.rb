@@ -2,14 +2,15 @@
 
 require 'singleton'
 
+# rubocop:disable Metrics/ClassLength
 class FeedManager
   include Singleton
   include Redisable
 
-  MAX_ITEMS = 400
+  MAX_ITEMS = 1000
 
   # Must be <= MAX_ITEMS or the tracking sets will grow forever
-  REBLOG_FALLOFF = 40
+  REBLOG_FALLOFF = 50
 
   def with_active_accounts(&block)
     Account.joins(:user).where('users.current_sign_in_at > ?', User::ACTIVE_DURATION.ago).find_each(&block)
@@ -22,8 +23,8 @@ class FeedManager
   end
 
   def filter?(timeline_type, status, receiver_id)
-    if timeline_type == :home
-      filter_from_home?(status, receiver_id, build_crutches(receiver_id, [status]))
+    if [:home, :list].include?(timeline_type)
+      filter_from_home?(status, receiver_id, build_crutches(receiver_id, [status]), filter_options_for(receiver_id))
     elsif timeline_type == :mentions
       filter_from_mentions?(status, receiver_id)
     elsif timeline_type == :direct
@@ -49,8 +50,11 @@ class FeedManager
   end
 
   def push_to_list(list, status)
+    return false if status.reblog?
+
     if status.reply? && status.in_reply_to_account_id != status.account_id
       should_filter = status.in_reply_to_account_id != list.account_id
+      should_filter &&= status.account_id == list.account_id
       should_filter &&= !list.show_all_replies?
       should_filter &&= !(list.show_list_replies? && ListAccount.where(list_id: list.id, account_id: status.in_reply_to_account_id).exists?)
       return false if should_filter
@@ -72,6 +76,7 @@ class FeedManager
 
   def push_to_direct(account, status)
     return false unless add_to_feed(:direct, account.id, status)
+
     trim(:direct, account.id)
     PushUpdateWorker.perform_async(account.id, status.id, "timeline:direct:#{account.id}")
     true
@@ -79,7 +84,27 @@ class FeedManager
 
   def unpush_from_direct(account, status)
     return false unless remove_from_feed(:direct, account.id, status)
+
     redis.publish("timeline:direct:#{account.id}", Oj.dump(event: :delete, payload: status.id.to_s))
+  end
+
+  def unpush_status(account, status)
+    return if account.blank? || status.blank?
+
+    unpush_from_home(account, status)
+    unpush_from_direct(account, status) if status.direct_visibility?
+
+    account.lists_for_local_distribution.select(:id, :account_id).each do |list|
+      unpush_from_list(list, status)
+    end
+  end
+
+  def unpush_conversation(account, conversation)
+    return if account.blank? || conversation.blank?
+
+    conversation.statuses.reorder(nil).find_each do |status|
+      unpush_status(account, status)
+    end
   end
 
   def trim(type, account_id)
@@ -119,9 +144,10 @@ class FeedManager
 
     statuses = query.to_a
     crutches = build_crutches(into_account.id, statuses)
+    filter_options = filter_options_for(into_account.id)
 
     statuses.each do |status|
-      next if filter_from_home?(status, into_account.id, crutches)
+      next if filter_from_home?(status, into_account.id, crutches, filter_options)
 
       add_to_feed(:home, into_account.id, status, aggregate)
     end
@@ -174,11 +200,12 @@ class FeedManager
         next if last_status_score < oldest_home_score
       end
 
-      statuses = target_account.statuses.where(visibility: [:public, :unlisted, :private]).includes(:preloadable_poll, reblog: :account).limit(limit)
+      statuses = target_account.statuses.published.without_replies.where(visibility: [:public, :unlisted, :private]).includes(:preloadable_poll, reblog: :account).limit(limit)
       crutches = build_crutches(account.id, statuses)
+      filter_options = filter_options_for(account.id)
 
       statuses.each do |status|
-        next if filter_from_home?(status, account.id, crutches)
+        next if filter_from_home?(status, account.id, crutches, filter_options)
 
         add_to_feed(:home, account.id, status, aggregate)
       end
@@ -199,6 +226,7 @@ class FeedManager
 
       statuses.each do |status|
         next if filter_from_direct?(status, account)
+
         added += 1 if add_to_feed(:direct, account.id, status)
       end
 
@@ -219,36 +247,73 @@ class FeedManager
       (context == :home ? Mute.where(account_id: receiver_id, target_account_id: account_ids).any? : Mute.where(account_id: receiver_id, target_account_id: account_ids, hide_notifications: true).any?)
   end
 
-  def filter_from_home?(status, receiver_id, crutches)
+  def filter_from_home?(status, receiver_id, crutches, filter_options)
+    conversation = status.conversation
+    reblog_conversation = status.reblog&.conversation
+
     return false if receiver_id == status.account_id
+    return true  unless status.published?
+    return true  if crutches[:hiding_thread][status.conversation_id] if conversation.present?
     return true  if status.reply? && (status.in_reply_to_id.nil? || status.in_reply_to_account_id.nil?)
     return true  if phrase_filtered?(status, receiver_id, :home)
 
     check_for_blocks = crutches[:active_mentions][status.id] || []
-    check_for_blocks.concat([status.account_id])
+    check_for_blocks.concat([status.account_id, conversation&.account_id])
+    check_for_blocks.concat([status.in_reply_to_account_id]) if status.reply?
 
     if status.reblog?
-      check_for_blocks.concat([status.reblog.account_id])
+      check_for_blocks.concat([status.reblog.account_id, reblog_conversation&.account_id])
       check_for_blocks.concat(crutches[:active_mentions][status.reblog_of_id] || [])
+      check_for_blocks.concat([status.reblog.in_reply_to_account_id]) if status.reblog.reply?
     end
 
+    check_for_blocks.uniq!
+    check_for_blocks.compact!
     return true if check_for_blocks.any? { |target_account_id| crutches[:blocking][target_account_id] || crutches[:muting][target_account_id] }
 
-    if status.reply? && !status.in_reply_to_account_id.nil?                                                                      # Filter out if it's a reply
-      should_filter   = !crutches[:following][status.in_reply_to_account_id]                                                     # and I'm not following the person it's a reply to
-      should_filter &&= receiver_id != status.in_reply_to_account_id                                                             # and it's not a reply to me
-      should_filter &&= status.account_id != status.in_reply_to_account_id                                                       # and it's not a self-reply
+    # Filter if...
+    if status.reply? # ...it's a reply and...
+      # ...you're not following the author...
+      should_filter   = !crutches[:following][status.in_reply_to_account_id]
+      # (optional) ...or the owner(s) of the thread...
+      should_filter ||= !crutches[:following][conversation.account_id] if filter_options[:to_unknown] && conversation&.account_id.present?
+      # ...and the author isn't replying to a post you wrote...
+      should_filter &&= receiver_id != status.in_reply_to_account_id
+      # ...and the author isn't mentioning you.
+      should_filter &&= !crutches[:active_mentions][receiver_id]
 
       return !!should_filter
-    elsif status.reblog?                                                                                                         # Filter out a reblog
-      should_filter   = crutches[:hiding_reblogs][status.account_id]                                                             # if the reblogger's reblogs are suppressed
-      should_filter ||= crutches[:blocked_by][status.reblog.account_id]                                                          # or if the author of the reblogged status is blocking me
-      should_filter ||= crutches[:domain_blocking][status.reblog.account.domain]                                                 # or the author's domain is blocked
+    elsif status.reblog? # ...it's a boost and...
+      should_filter = false
+
+      # ...it's a reply...
+      if status.reblog.reply? && !status.reblog.in_reply_to_account_id.nil?
+        # ...and you don't follow the author if:
+        # - you're filtering replies to parent authors you don't follow
+        # - they're silenced on this server
+        should_filter ||= !crutches[:following][status.reblog.in_reply_to_account_id] if filter_options[:to_unknown] || status.reblog.in_reply_to_account.silenced?
+        # - you're filtering replies to threads whose owners you don't follow
+        should_filter ||= !crutches[:following][reblog_conversation.account_id] if filter_options[:to_unknown] && reblog_conversation&.account_id.present?
+        # ...or you're blocking their domain...
+        should_filter ||= crutches[:domain_blocking][status.reblog.thread.account.domain] if status.reblog.thread.present?
+      end
+
+      # ...or it's a post from a thread's trunk and you don't follow the author if:
+      # - you're filtering boosts of authors you don't follow
+      # - they're silenced on this server
+      should_filter ||= !crutches[:following][status.reblog.account_id] if filter_options[:from_unknown] || status.reblog.account.silenced?
+
+      # ..or you're hiding boosts from them...
+      should_filter ||= crutches[:hiding_reblogs][status.account_id]
+      # ...or they're blocking you...
+      should_filter ||= crutches[:blocked_by][status.reblog.account_id]
+      # ...or you're blocking their domain...
+      should_filter ||= crutches[:domain_blocking][status.reblog.account.domain]
 
       return !!should_filter
     end
 
-    false
+    crutches[:following][status.account_id]
   end
 
   def filter_from_mentions?(status, receiver_id)
@@ -261,14 +326,21 @@ class FeedManager
     check_for_blocks = status.active_mentions.pluck(:account_id)
     check_for_blocks.concat([status.in_reply_to_account]) if status.reply? && !status.in_reply_to_account_id.nil?
 
-    should_filter   = blocks_or_mutes?(receiver_id, check_for_blocks, :mentions)                                                         # Filter if it's from someone I blocked, in reply to someone I blocked, or mentioning someone I blocked (or muted)
-    should_filter ||= (status.account.silenced? && !Follow.where(account_id: receiver_id, target_account_id: status.account_id).exists?) # of if the account is silenced and I'm not following them
+    should_filter   = blocks_or_mutes?(receiver_id, check_for_blocks, :mentions)
+    should_filter ||= (status.account.silenced? && !relationship_exists?(receiver_id, status.account_id))
 
     should_filter
   end
 
+  def relationship_exists?(account_id, target_account_id)
+    Follow.where(account_id: account_id, target_account_id: target_account_id)
+          .or(Follow.where(account_id: target_account_id, target_account_id: account_id))
+          .exists?
+  end
+
   def filter_from_direct?(status, receiver_id)
     return false if receiver_id == status.account_id
+
     filter_from_mentions?(status, receiver_id)
   end
 
@@ -388,6 +460,17 @@ class FeedManager
     redis.zrem(timeline_key, status.id)
   end
 
+  def filter_options_for(receiver_id)
+    Rails.cache.fetch("filter_settings:#{receiver_id}", expires_in: 1.month) do
+      return {} if (settings = User.find_by(account_id: receiver_id)&.settings).blank?
+
+      {
+        to_unknown: settings.filter_to_unknown,
+        from_unknown: settings.filter_from_unknown,
+      }
+    end
+  end
+
   def build_crutches(receiver_id, statuses)
     crutches = {}
 
@@ -411,7 +494,9 @@ class FeedManager
     crutches[:muting]          = Mute.where(account_id: receiver_id, target_account_id: check_for_blocks).pluck(:target_account_id).each_with_object({}) { |id, mapping| mapping[id] = true }
     crutches[:domain_blocking] = AccountDomainBlock.where(account_id: receiver_id, domain: statuses.map { |s| s.reblog&.account&.domain }.compact).pluck(:domain).each_with_object({}) { |domain, mapping| mapping[domain] = true }
     crutches[:blocked_by]      = Block.where(target_account_id: receiver_id, account_id: statuses.map { |s| s.reblog&.account_id }.compact).pluck(:account_id).each_with_object({}) { |id, mapping| mapping[id] = true }
+    crutches[:hiding_thread]   = ConversationMute.where(account_id: receiver_id, conversation_id: statuses.map(&:conversation_id).compact, hidden: true).pluck(:conversation_id).each_with_object({}) { |id, mapping| mapping[id] = true }
 
     crutches
   end
 end
+# rubocop:enable Metrics/ClassLength

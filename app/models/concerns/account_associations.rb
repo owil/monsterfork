@@ -60,5 +60,23 @@ module AccountAssociations
     # Hashtags
     has_and_belongs_to_many :tags
     has_many :featured_tags, -> { includes(:tag) }, dependent: :destroy, inverse_of: :account
+
+    # Threads
+    has_many :threads, class_name: 'Conversation', inverse_of: :account, dependent: :nullify
+
+    # Domain permissions
+    has_many :domain_permissions, class_name: 'AccountDomainPermission', inverse_of: :account, dependent: :destroy
+
+    # Custom metadata
+    has_one :metadata, class_name: 'AccountMetadata', inverse_of: :account, dependent: :destroy
+
+    # Queued boosts
+    has_many :queued_boosts, inverse_of: :account, dependent: :destroy
+
+    # Collection pages
+    has_many :collection_pages, inverse_of: :account, dependent: :destroy
+
+    # Collection items
+    has_many :collection_items, inverse_of: :account, dependent: :destroy
   end
 end

@@ -54,7 +54,7 @@ module Admin
 
     def set_usage_by_domain
       @usage_by_domain = @tag.statuses
-                             .with_public_visibility
+                             .distributable
                              .excluding_silenced_accounts
                              .where(Status.arel_table[:id].gteq(Mastodon::Snowflake.id_at(Time.now.utc.beginning_of_day)))
                              .joins(:account)

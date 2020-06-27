@@ -50,6 +50,12 @@
 #  avatar_storage_schema_version :integer
 #  header_storage_schema_version :integer
 #  devices_url                   :string
+#  require_dereference           :boolean          default(FALSE), not null
+#  show_replies                  :boolean          default(TRUE), not null
+#  show_unlisted                 :boolean          default(TRUE), not null
+#  private                       :boolean          default(FALSE), not null
+#  require_auth                  :boolean          default(FALSE), not null
+#  last_synced_at                :datetime
 #
 
 class Account < ApplicationRecord
@@ -115,6 +121,7 @@ class Account < ApplicationRecord
   scope :by_domain_and_subdomains, ->(domain) { where(domain: domain).or(where(arel_table[:domain].matches('%.' + domain))) }
   scope :not_excluded_by_account, ->(account) { where.not(id: account.excluded_from_timeline_account_ids) }
   scope :not_domain_blocked_by_account, ->(account) { where(arel_table[:domain].eq(nil).or(arel_table[:domain].not_in(account.excluded_from_timeline_domains))) }
+  scope :random, -> { reorder(Arel.sql('RANDOM()')).limit(1) }
 
   delegate :email,
            :unconfirmed_email,
@@ -357,6 +364,38 @@ class Account < ApplicationRecord
     shared_inbox_url.presence || inbox_url
   end
 
+  def max_visibility_for_domain(domain)
+    return 'public' if domain.blank?
+
+    domain_permissions.find_by(domain: [domain, '*'])&.visibility || 'public'
+  end
+
+  def visibility_for_domain(domain)
+    v = visibility.to_s
+    return v if domain.blank?
+
+    case max_visibility_for_domain(domain)
+    when 'public'
+      v
+    when 'unlisted'
+      v == 'public' ? 'unlisted' : v
+    when 'private'
+      %w(public unlisted).include?(v) ? 'private' : v
+    when 'direct'
+      'direct'
+    else
+      v != 'direct' ? 'limited' : 'direct'
+    end
+  end
+
+  def public_domain_permissions?
+    domain_permissions.where(visibility: [:public, :unlisted]).exists?
+  end
+
+  def private_domain_permissions?
+    domain_permissions.where(visibility: [:private, :direct, :limited]).exists?
+  end
+
   class Field < ActiveModelSerializers::Model
     attributes :name, :value, :verified_at, :account, :errors
 
@@ -525,6 +564,8 @@ class Account < ApplicationRecord
   before_validation :prepare_username, on: :create
   before_destroy :clean_feed_manager
 
+  after_create_commit :set_metadata, if: :local?
+
   private
 
   def prepare_contents
@@ -567,5 +608,9 @@ class Account < ApplicationRecord
         Redis.current.del(reblog_set_key)
       end
     end
+  end
+
+  def set_metadata
+    self.metadata = AccountMetadata.new(account_id: id, fields: {}) if metadata.nil?
   end
 end

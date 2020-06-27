@@ -9,6 +9,6 @@ class ActivityPub::Activity::Add < ActivityPub::Activity
 
     return unless !status.nil? && status.account_id == @account.id && !@account.pinned?(status)
 
-    StatusPin.create!(account: @account, status: status)
+    StatusPin.create(account: @account, status: status)
   end
 end

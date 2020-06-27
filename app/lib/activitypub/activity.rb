@@ -4,8 +4,8 @@ class ActivityPub::Activity
   include JsonLdHelper
   include Redisable
 
-  SUPPORTED_TYPES = %w(Note Question).freeze
-  CONVERTED_TYPES = %w(Image Audio Video Article Page Event).freeze
+  SUPPORTED_TYPES = %w(Note Question Article).freeze
+  CONVERTED_TYPES = %w(Image Audio Video Page Event).freeze
 
   def initialize(json, account, **options)
     @json    = json
@@ -190,7 +190,7 @@ class ActivityPub::Activity
   end
 
   def first_local_follower
-    @account.followers.local.first
+    @account.followers.local.random.first
   end
 
   def follow_request_from_object
@@ -204,9 +204,9 @@ class ActivityPub::Activity
   def fetch_remote_original_status
     if object_uri.start_with?('http')
       return if ActivityPub::TagManager.instance.local_uri?(object_uri)
-      ActivityPub::FetchRemoteStatusService.new.call(object_uri, id: true, on_behalf_of: @account.followers.local.first)
+      ActivityPub::FetchRemoteStatusService.new.call(object_uri, id: true, on_behalf_of: signed_fetch_account)
     elsif @object['url'].present?
-      ::FetchRemoteStatusService.new.call(@object['url'])
+      ::FetchRemoteStatusService.new.call(@object['url'], nil, signed_fetch_account)
     end
   end
 

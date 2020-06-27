@@ -10,9 +10,12 @@ class ActivityPub::OutboxesController < ActivityPub::BaseController
   before_action :set_statuses
   before_action :set_cache_headers
 
+  before_action :require_authenticated!, if: -> { @account.require_auth? }
+  before_action -> { require_following!(@account) }, if: -> { @account.private? }
+
   def show
-    expires_in(page_requested? ? 0 : 3.minutes, public: public_fetch_mode? && !(signed_request_account.present? && page_requested?))
-    render json: outbox_presenter, serializer: ActivityPub::OutboxSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json'
+    expires_in(page_requested? ? 0 : 3.minutes, public: public_fetch_mode? && !(current_account.present? && page_requested?))
+    render json: outbox_presenter, serializer: ActivityPub::OutboxSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json', target_domain: current_account&.domain
   end
 
   private
@@ -31,7 +34,6 @@ class ActivityPub::OutboxesController < ActivityPub::BaseController
       ActivityPub::CollectionPresenter.new(
         id: account_outbox_url(@account),
         type: :ordered,
-        size: @account.statuses_count,
         first: outbox_url(page: true),
         last: outbox_url(page: true, min_id: 0)
       )
@@ -54,12 +56,39 @@ class ActivityPub::OutboxesController < ActivityPub::BaseController
     account_outbox_url(@account, page: true, min_id: @statuses.first.id) unless @statuses.empty?
   end
 
+  def permitted_account_statuses
+    @account.statuses.permitted_for(
+      @account,
+      current_account,
+      include_replies: true,
+      include_reblogs: true,
+      public: !(owner? || follower?),
+      include_semiprivate: owner? || mutual_follower?,
+      exclude_local_only: true
+    )
+  end
+
+  def owner?
+    return @owner if defined?(@owner)
+
+    @owner   = @account.id == current_account&.id
+    @owner ||= @account.moved_to_account_id == current_account&.id if @account.moved_to_account_id.present?
+    @owner
+  end
+
+  def follower?
+    @following ||= current_account&.following?(@account)
+  end
+
+  def mutual_follower?
+    follower? && @account.following?(current_account)
+  end
+
   def set_statuses
     return unless page_requested?
 
-    @statuses = @account.statuses.permitted_for(@account, signed_request_account)
     @statuses = cache_collection_paginated_by_id(
-      @statuses,
+      permitted_account_statuses,
       Status,
       LIMIT,
       params_slice(:max_id, :min_id, :since_id)

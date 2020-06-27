@@ -7,6 +7,7 @@ import ImmutablePureComponent from 'react-immutable-pure-component';
 import { FormattedMessage } from 'react-intl';
 import { NavLink } from 'react-router-dom';
 import MovedNote from './moved_note';
+import { me } from 'flavours/glitch/util/initial_state';
 
 export default class Header extends ImmutablePureComponent {
 
@@ -123,9 +124,12 @@ export default class Header extends ImmutablePureComponent {
 
         {!hideTabs && (
           <div className='account__section-headline'>
-            <NavLink exact to={`/accounts/${account.get('id')}`}><FormattedMessage id='account.posts' defaultMessage='Toots' /></NavLink>
-            <NavLink exact to={`/accounts/${account.get('id')}/with_replies`}><FormattedMessage id='account.posts_with_replies' defaultMessage='Toots with replies' /></NavLink>
+            <NavLink exact to={`/accounts/${account.get('id')}`}><FormattedMessage id='account.threads' defaultMessage='Threads' /></NavLink>
+            { (account.get('id') === me || account.get('show_replies')) &&
+                (<NavLink exact to={`/accounts/${account.get('id')}/with_replies`}><FormattedMessage id='account.posts_with_replies' defaultMessage='Toots with replies' /></NavLink>) }
+            { (account.get('id') !== me) && (<NavLink exact to={`/accounts/${account.get('id')}/mentions`}><FormattedMessage id='account.mentions' defaultMessage='Mentions' /></NavLink>) }
             <NavLink exact to={`/accounts/${account.get('id')}/media`}><FormattedMessage id='account.media' defaultMessage='Media' /></NavLink>
+            <NavLink exact to={`/accounts/${account.get('id')}/reblogs`}><FormattedMessage id='account.reblogs' defaultMessage='Boosts' /></NavLink>
           </div>
         )}
       </div>

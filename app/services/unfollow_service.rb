@@ -13,13 +13,15 @@ class UnfollowService < BaseService
     @target_account = target_account
     @options        = options
 
-    unfollow! || undo_follow_request!
+    unfollow!
+    undo_follow_request!
   end
 
   private
 
   def unfollow!
     follow = Follow.find_by(account: @source_account, target_account: @target_account)
+    follow = Follow.create!(account: @source_account, target_account: @target_account) if follow.blank? && @options[:force]
 
     return unless follow
 
@@ -34,6 +36,7 @@ class UnfollowService < BaseService
 
   def undo_follow_request!
     follow_request = FollowRequest.find_by(account: @source_account, target_account: @target_account)
+    follow_request = FollowRequest.create!(account: @source_account, target_account: @target_account) if follow_request.blank? && @options[:force]
 
     return unless follow_request
 

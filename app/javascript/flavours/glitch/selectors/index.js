@@ -141,6 +141,11 @@ export const makeGetStatus = () => {
         }
       }
 
+      if (statusReblog) {
+        statusReblog = statusReblog.set('reblogSpoilerPresent', statusBase.get('spoiler_text').length > 0);
+        statusReblog = statusReblog.set('reblogSpoilerHtml', statusBase.get('spoilerHtml'));
+      }
+
       return statusBase.withMutations(map => {
         map.set('reblog', statusReblog);
         map.set('account', accountBase);

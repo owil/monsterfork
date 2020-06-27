@@ -120,21 +120,10 @@ module Mastodon::Snowflake
 
         seq_name = data[:seq_prefix] + '_id_seq'
 
-        # If we were on Postgres 9.5+, we could do CREATE SEQUENCE IF
-        # NOT EXISTS, but we can't depend on that. Instead, catch the
-        # possible exception and ignore it.
         # Note that seq_name isn't a column name, but it's a
         # relation, like a column, and follows the same quoting rules
         # in Postgres.
-        connection.execute(<<~SQL)
-          DO $$
-            BEGIN
-              CREATE SEQUENCE #{connection.quote_column_name(seq_name)};
-            EXCEPTION WHEN duplicate_table THEN
-              -- Do nothing, we have the sequence already.
-            END
-          $$ LANGUAGE plpgsql;
-        SQL
+        connection.execute("CREATE SEQUENCE IF NOT EXISTS #{connection.quote_column_name(seq_name)};")
       end
     end
 

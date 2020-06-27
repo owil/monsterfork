@@ -23,6 +23,10 @@ const messages = defineMessages({
     defaultMessage: '{publish}!',
     id: 'compose_form.publish_loud',
   },
+  clear: {
+    defaultMessage: 'Double-click to clear',
+    id: 'compose_form.clear',
+  },
 });
 
 export default @injectIntl
@@ -34,6 +38,7 @@ class Publisher extends ImmutablePureComponent {
     intl: PropTypes.object.isRequired,
     onSecondarySubmit: PropTypes.func,
     onSubmit: PropTypes.func,
+    onClearAll: PropTypes.func,
     privacy: PropTypes.oneOf(['direct', 'private', 'unlisted', 'public']),
     sideArm: PropTypes.oneOf(['none', 'direct', 'private', 'unlisted', 'public']),
   };
@@ -43,7 +48,7 @@ class Publisher extends ImmutablePureComponent {
   };
 
   render () {
-    const { countText, disabled, intl, onSecondarySubmit, privacy, sideArm } = this.props;
+    const { countText, disabled, intl, onClearAll, onSecondarySubmit, privacy, sideArm } = this.props;
 
     const diff = maxChars - length(countText || '');
     const computedClass = classNames('composer--publisher', {
@@ -53,6 +58,17 @@ class Publisher extends ImmutablePureComponent {
 
     return (
       <div className={computedClass}>
+        <Button
+          className='clear'
+          onClick={onClearAll}
+          style={{ padding: null }}
+          title={intl.formatMessage(messages.clear)}
+          text={
+            <span>
+              <Icon id='trash-o' />
+            </span>
+          }
+        />
         {sideArm && sideArm !== 'none' ? (
           <Button
             className='side_arm'

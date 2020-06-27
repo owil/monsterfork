@@ -22,4 +22,6 @@ ActiveSupport::Inflector.inflections(:en) do |inflect|
   inflect.acronym 'Ed25519'
 
   inflect.singular 'data', 'data'
+
+  inflect.irregular 'publish', 'publishing'
 end

@@ -8,6 +8,8 @@ class REST::PreferencesSerializer < ActiveModel::Serializer
   attribute :reading_default_sensitive_media, key: 'reading:expand:media'
   attribute :reading_default_sensitive_text, key: 'reading:expand:spoilers'
 
+  attribute :posting_default_manual_publish, key: 'posting:default:manual_publish'
+
   def posting_default_privacy
     object.user.setting_default_privacy
   end
@@ -26,5 +28,9 @@ class REST::PreferencesSerializer < ActiveModel::Serializer
 
   def reading_default_sensitive_text
     object.user.setting_expand_spoilers
+  end
+
+  def posting_default_manual_publish
+    object.user.setting_manual_publish
   end
 end

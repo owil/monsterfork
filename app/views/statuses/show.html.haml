@@ -16,6 +16,10 @@
   = render 'og_description', activity: @status
   = render 'og_image', activity: @status, account: @account
 
+- content_for :header_overrides do
+  - if @account&.user&.setting_style_css_profile.present?
+    = stylesheet_link_tag user_profile_css_path(id: @account.id), media: 'all'
+
 .grid
   .column-0
     .activity-stream.h-entry

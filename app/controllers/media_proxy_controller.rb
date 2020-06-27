@@ -7,7 +7,7 @@ class MediaProxyController < ApplicationController
   skip_before_action :store_current_location
   skip_before_action :require_functional!
 
-  before_action :authenticate_user!, if: :whitelist_mode?
+  #before_action :authenticate_user!, if: :whitelist_mode?
 
   rescue_from ActiveRecord::RecordInvalid, with: :not_found
   rescue_from Mastodon::UnexpectedResponseError, with: :not_found
@@ -19,6 +19,7 @@ class MediaProxyController < ApplicationController
       if lock.acquired?
         @media_attachment = MediaAttachment.remote.attached.find(params[:id])
         authorize @media_attachment.status, :show?
+        authorize @media_attachment.status.reblog, :show? if @media_attachment.status.reblog?
         redownload! if @media_attachment.needs_redownload? && !reject_media?
       else
         raise Mastodon::RaceConditionError

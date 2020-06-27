@@ -8,10 +8,12 @@
 #  domain     :string           default(""), not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
+#  hidden     :boolean          default(FALSE), not null
 #
 
 class DomainAllow < ApplicationRecord
   include DomainNormalizable
+  include Paginable
 
   validates :domain, presence: true, uniqueness: true, domain: true
 

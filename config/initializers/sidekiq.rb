@@ -15,8 +15,8 @@ Sidekiq.configure_server do |config|
   end
 
   config.death_handlers << lambda do |job, _ex|
-    digest = job['lock_digest']
-    SidekiqUniqueJobs::Digests.delete_by_digest(digest) if digest
+    SidekiqUniqueJobs::Digests.delete_by_digest(job['lock_digest']) if job['lock_digest']
+    SidekiqUniqueJobs::Digests.delete_by_digest(job['unique_digest']) if job['unique_digest']
   end
 end
 

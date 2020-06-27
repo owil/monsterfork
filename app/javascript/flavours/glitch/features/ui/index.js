@@ -214,8 +214,10 @@ class SwitchingColumnsArea extends React.PureComponent {
           <WrappedRoute path='/statuses/:statusId/reblogs' component={Reblogs} content={children} />
           <WrappedRoute path='/statuses/:statusId/favourites' component={Favourites} content={children} />
 
-          <WrappedRoute path='/accounts/:accountId' exact component={AccountTimeline} content={children} />
-          <WrappedRoute path='/accounts/:accountId/with_replies' component={AccountTimeline} content={children} componentParams={{ withReplies: true }} />
+          <WrappedRoute path='/accounts/:accountId' exact component={AccountTimeline} content={children} componentParams={{ filter: '' }} />
+          <WrappedRoute path='/accounts/:accountId/mentions' component={AccountTimeline} content={children} componentParams={{ filter: ':mentions' }} />
+          <WrappedRoute path='/accounts/:accountId/with_replies' component={AccountTimeline} content={children} componentParams={{ filter: ':replies' }} />
+          <WrappedRoute path='/accounts/:accountId/reblogs' component={AccountTimeline} content={children} componentParams={{ filter: ':reblogs' }} />
           <WrappedRoute path='/accounts/:accountId/followers' component={Followers} content={children} />
           <WrappedRoute path='/accounts/:accountId/following' component={Following} content={children} />
           <WrappedRoute path='/accounts/:accountId/media' component={AccountGallery} content={children} />

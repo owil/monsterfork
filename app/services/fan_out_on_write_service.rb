@@ -3,10 +3,11 @@
 class FanOutOnWriteService < BaseService
   # Push a status into home and mentions feeds
   # @param [Status] status
-  def call(status)
+  def call(status, only_to_self: false)
     raise Mastodon::RaceConditionError if status.visibility.nil?
 
     deliver_to_self(status) if status.account.local?
+    return if only_to_self || !status.published?
 
     if status.direct_visibility?
       deliver_to_mentioned_followers(status)
@@ -14,22 +15,30 @@ class FanOutOnWriteService < BaseService
       deliver_to_own_conversation(status)
     elsif status.limited_visibility?
       deliver_to_mentioned_followers(status)
+      deliver_to_lists(status)
     else
       deliver_to_followers(status)
       deliver_to_lists(status)
     end
 
-    return if status.account.silenced? || !status.public_visibility?
-    return if status.reblog? && !Setting.show_reblogs_in_public_timelines
+    return if status.account.silenced?
 
-    render_anonymous_payload(status)
-
+    render_anonymous_payload(status.proper)
     deliver_to_hashtags(status)
 
-    return if status.reply? && status.in_reply_to_account_id != status.account_id && !Setting.show_replies_in_public_timelines
+    if status.reblog?
+      if status.local? && status.reblog.public_visibility? && !status.reblog.account.silenced?
+        deliver_to_public(status.reblog)
+        deliver_to_media(status.reblog) if status.reblog.media_attachments.any?
+      end
+      return
+    end
 
-    deliver_to_public(status)
-    deliver_to_media(status) if status.media_attachments.any?
+    deliver_to_hashtags(status) if status.distributable?
+    return if !status.public_visibility? || (status.reply? && status.in_reply_to_account_id != status.account_id)
+
+    deliver_to_media(status, true) if status.media_attachments.any?
+    deliver_to_public(status, true)
   end
 
   private
@@ -84,10 +93,15 @@ class FanOutOnWriteService < BaseService
     end
   end
 
-  def deliver_to_public(status)
+  def deliver_to_public(status, tavern = false)
+    key = "timeline:public:#{status.id}"
+    return if Redis.current.get(key)
+
     Rails.logger.debug "Delivering status #{status.id} to public timeline"
 
-    Redis.current.publish('timeline:public', @payload)
+    Redis.current.set(key, 1, ex: 2.hours)
+
+    Redis.current.publish('timeline:public', @payload) if status.local? || !tavern
     if status.local?
       Redis.current.publish('timeline:public:local', @payload)
     else
@@ -95,10 +109,13 @@ class FanOutOnWriteService < BaseService
     end
   end
 
-  def deliver_to_media(status)
+  def deliver_to_media(status, tavern = false)
+    key = "timeline:public:#{status.id}"
+    return if Redis.current.get(key)
+
     Rails.logger.debug "Delivering status #{status.id} to media timeline"
 
-    Redis.current.publish('timeline:public:media', @payload)
+    Redis.current.publish('timeline:public:media', @payload) if status.local? || !tavern
     if status.local?
       Redis.current.publish('timeline:public:local:media', @payload)
     else
@@ -109,7 +126,7 @@ class FanOutOnWriteService < BaseService
   def deliver_to_direct_timelines(status)
     Rails.logger.debug "Delivering status #{status.id} to direct timelines"
 
-    FeedInsertWorker.push_bulk(status.mentions.includes(:account).map(&:account).select { |mentioned_account| mentioned_account.local? }) do |account|
+    FeedInsertWorker.push_bulk(status.mentions.includes(:account).map(&:account).select(&:local?)) do |account|
       [status.id, account.id, :direct]
     end
   end

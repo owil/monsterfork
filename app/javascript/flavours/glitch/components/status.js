@@ -73,6 +73,8 @@ class Status extends ImmutablePureComponent {
     onReblog: PropTypes.func,
     onBookmark: PropTypes.func,
     onDelete: PropTypes.func,
+    onEdit: PropTypes.func,
+    onPublish: PropTypes.func,
     onDirect: PropTypes.func,
     onMention: PropTypes.func,
     onPin: PropTypes.func,
@@ -368,7 +370,7 @@ class Status extends ImmutablePureComponent {
   }
 
   handleExpandedToggle = () => {
-    if (this.props.status.get('spoiler_text')) {
+    if (this.props.status.get('spoiler_text') || this.props.status.get('reblogSpoilerHtml')) {
       this.setExpansion(!this.state.isExpanded);
     }
   };
@@ -672,6 +674,9 @@ class Status extends ImmutablePureComponent {
     //  Users can use those for theming, hiding avatars etc via UserStyle
     const selectorAttribs = {
       'data-status-by': `@${status.getIn(['account', 'acct'])}`,
+      'data-nest-level': status.get('nest_level'),
+      'data-nest-deep': status.get('nest_level') >= 15,
+      'data-local-only': !!status.get('local_only'),
     };
 
     if (prepend && account) {
@@ -692,6 +697,7 @@ class Status extends ImmutablePureComponent {
 
     const computedClass = classNames('status', `status-${status.get('visibility')}`, {
       collapsed: isCollapsed,
+      unpublished: status.get('published') === false,
       'has-background': isCollapsed && background,
       'status__wrapper-reply': !!status.get('in_reply_to_id'),
       read: unread === false,

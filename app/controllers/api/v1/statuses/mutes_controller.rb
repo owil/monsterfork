@@ -9,11 +9,13 @@ class Api::V1::Statuses::MutesController < Api::BaseController
   before_action :set_conversation
 
   def create
-    current_account.mute_conversation!(@conversation)
+    MuteConversationService.new.call(current_account, @status.conversation, hidden: truthy_param?(:hide))
     @mutes_map = { @conversation.id => true }
 
     render json: @status, serializer: REST::StatusSerializer
   end
+
+  alias update create
 
   def destroy
     current_account.unmute_conversation!(@conversation)

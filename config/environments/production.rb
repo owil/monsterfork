@@ -60,7 +60,7 @@ Rails.application.configure do
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # English when a translation cannot be found).
-  config.i18n.fallbacks = [:en]
+  config.i18n.fallbacks = [:'en-MP', :en]
 
   # Send deprecation notices to registered listeners.
   config.active_support.deprecation = :notify

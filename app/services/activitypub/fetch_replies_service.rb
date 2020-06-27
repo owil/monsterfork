@@ -1,49 +1,32 @@
 # frozen_string_literal: true
 
 class ActivityPub::FetchRepliesService < BaseService
-  include JsonLdHelper
-
-  def call(parent_status, collection_or_uri, allow_synchronous_requests = true)
+  def call(parent_status, collection, **options)
     @account = parent_status.account
-    @allow_synchronous_requests = allow_synchronous_requests
+    return if @account.suspended?
 
-    @items = collection_items(collection_or_uri)
-    return if @items.nil?
+    fetch_collection_items(collection, **options)
+    return if (collection.is_a?(String) && collection == @account.outbox_url) || @account.local? || @account.silenced? || @account.passive_relationships.exists? || !@account.active_relationships.exists?
 
-    FetchReplyWorker.push_bulk(filtered_replies)
-
-    @items
+    fetch_collection_items(@account.outbox_url, **options)
+  rescue ActiveRecord::RecordNotFound
+    nil
   end
 
   private
 
-  def collection_items(collection_or_uri)
-    collection = fetch_collection(collection_or_uri)
-    return unless collection.is_a?(Hash)
+  def fetch_collection_items(collection, **options)
+    ActivityPub::FetchCollectionItemsService.new.call(
+      collection,
+      @account,
+      page_limit: 1,
+      item_limit: 20,
+      **options
+    )
+  rescue Mastodon::RaceConditionError, Mastodon::UnexpectedResponseError
+    collection_uri = collection.is_a?(Hash) ? collection['id'] : collection
+    return unless collection_uri.present? && collection_uri.is_a?(String)
 
-    collection = fetch_collection(collection['first']) if collection['first'].present?
-    return unless collection.is_a?(Hash)
-
-    case collection['type']
-    when 'Collection', 'CollectionPage'
-      collection['items']
-    when 'OrderedCollection', 'OrderedCollectionPage'
-      collection['orderedItems']
-    end
-  end
-
-  def fetch_collection(collection_or_uri)
-    return collection_or_uri if collection_or_uri.is_a?(Hash)
-    return unless @allow_synchronous_requests
-    return if invalid_origin?(collection_or_uri)
-    fetch_resource_without_id_validation(collection_or_uri, nil, true)
-  end
-
-  def filtered_replies
-    # Only fetch replies to the same server as the original status to avoid
-    # amplification attacks.
-
-    # Also limit to 5 fetched replies to limit potential for DoS.
-    @items.map { |item| value_or_id(item) }.reject { |uri| invalid_origin?(uri) }.take(5)
+    ActivityPub::FetchRepliesWorker.perform_async(@account.id, collection_uri)
   end
 end

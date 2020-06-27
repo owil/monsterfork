@@ -16,6 +16,9 @@ class MoveWorker
     copy_account_notes!
     carry_blocks_over!
     carry_mutes_over!
+    return unless @target_account.local?
+
+    ActivityPub::SyncAccountWorker.perform_async(@source_account.id, every_page: true, skip_cooldown: true)
   rescue ActiveRecord::RecordNotFound
     true
   end

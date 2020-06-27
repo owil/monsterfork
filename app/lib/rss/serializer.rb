@@ -10,6 +10,7 @@ class RSS::Serializer
             .link(ActivityPub::TagManager.instance.url_for(status))
             .pub_date(status.created_at)
             .description(status.spoiler_text.presence || Formatter.instance.format(status, inline_poll_options: true).to_str)
+            .content(Formatter.instance.format(status, inline_poll_options: true, article_content: true).to_str)
 
         status.media_attachments.each do |media|
           item.enclosure(full_asset_url(media.file.url(:original, false)), media.file.content_type, media.file.size)

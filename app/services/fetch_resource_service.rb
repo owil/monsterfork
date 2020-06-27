@@ -7,8 +7,10 @@ class FetchResourceService < BaseService
 
   attr_reader :response_code
 
-  def call(url)
+  def call(url, on_behalf_of: nil)
     return if url.blank?
+
+    @on_behalf_of = on_behalf_of || Account.representative
 
     process(url)
   rescue HTTP::Error, OpenSSL::SSL::SSLError, Addressable::URI::InvalidURIError, Mastodon::HostValidationError, Mastodon::LengthValidationError => e
@@ -18,8 +20,9 @@ class FetchResourceService < BaseService
 
   private
 
-  def process(url, terminal = false)
+  def process(url, terminal = false, retry_as_server = false)
     @url = url
+    @retry_as_server ||= retry_as_server
 
     perform_request { |response| process_response(response, terminal) }
   end
@@ -35,13 +38,14 @@ class FetchResourceService < BaseService
       # and prevents even public resources from being fetched, so
       # don't do it
 
-      request.on_behalf_of(Account.representative) unless Rails.env.development?
+      request.on_behalf_of(@retry_as_server ? Account.representative : @on_behalf_of) unless Rails.env.development?
     end.perform(&block)
   end
 
   def process_response(response, terminal = false)
     @response_code = response.code
-    return nil if response.code != 200
+    skip_retry = @retry_as_server || Rails.env.development? || @on_behalf_of.id == -99
+    return (skip_retry ? nil : process(response.uri, terminal, true)) if response.code != 200
 
     if ['application/activity+json', 'application/ld+json'].include?(response.mime_type)
       body = response.body_with_limit
@@ -67,13 +71,13 @@ class FetchResourceService < BaseService
     page      = Nokogiri::HTML(response.body_with_limit)
     json_link = page.xpath('//link[@rel="alternate"]').find { |link| ['application/activity+json', 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"'].include?(link['type']) }
 
-    process(json_link['href'], terminal: true) unless json_link.nil?
+    process(json_link['href'], true) unless json_link.nil?
   end
 
   def process_link_headers(link_header)
     json_link = link_header.find_link(%w(rel alternate), %w(type application/activity+json)) || link_header.find_link(%w(rel alternate), ['type', 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"'])
 
-    process(json_link.href, terminal: true) unless json_link.nil?
+    process(json_link.href, true) unless json_link.nil?
   end
 
   def parse_link_header(response)

@@ -16,6 +16,9 @@
   = opengraph 'og:type', 'profile'
   = render 'og', account: @account, url: short_account_url(@account, only_path: false)
 
+- content_for :header_overrides do
+  - if @account&.user&.setting_style_css_profile.present?
+    = stylesheet_link_tag user_profile_css_path(id: @account.id), media: 'all'
 
 = render 'header', account: @account, with_bio: true
 
@@ -26,8 +29,13 @@
 
       .account__section-headline
         = active_link_to t('accounts.posts_tab_heading'), short_account_url(@account)
-        = active_link_to t('accounts.posts_with_replies'), short_account_with_replies_url(@account)
+        = active_link_to t('accounts.threads'), short_account_threads_url(@account)
+        - if @account.show_replies?
+          = active_link_to t('accounts.posts_with_replies'), short_account_with_replies_url(@account)
+        - if current_account.present? && @account.id != current_account.id
+          = active_link_to t('accounts.mentions'), short_account_mentions_url(@account)
         = active_link_to t('accounts.media'), short_account_media_url(@account)
+        = active_link_to t('accounts.reblogs'), short_account_reblogs_url(@account)
 
       - if user_signed_in? && @account.blocking?(current_account)
         .nothing-here.nothing-here--under-tabs= t('accounts.unavailable')

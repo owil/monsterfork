@@ -14,7 +14,7 @@ class ActivityPub::RepliesController < ActivityPub::BaseController
 
   def index
     expires_in 0, public: public_fetch_mode?
-    render json: replies_collection_presenter, serializer: ActivityPub::CollectionSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json', skip_activities: true
+    render json: replies_collection_presenter, serializer: ActivityPub::CollectionSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json', skip_activities: true, target_domain: current_account&.domain
   end
 
   private
@@ -33,6 +33,7 @@ class ActivityPub::RepliesController < ActivityPub::BaseController
   def set_replies
     @replies = only_other_accounts? ? Status.where.not(account_id: @account.id) : @account.statuses
     @replies = @replies.where(in_reply_to_id: @status.id, visibility: [:public, :unlisted])
+    @replies = @replies.without_semiprivate unless authenticated_or_following?(@account)
     @replies = @replies.paginate_by_min_id(DESCENDANTS_LIMIT, params[:min_id])
   end
 

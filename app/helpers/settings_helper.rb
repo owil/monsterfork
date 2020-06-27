@@ -2,6 +2,7 @@
 
 module SettingsHelper
   HUMAN_LOCALES = {
+    'en-MP': 'English (Monsterpit)',
     ar: 'العربية',
     ast: 'Asturianu',
     bg: 'Български',

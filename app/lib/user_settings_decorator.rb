@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
+require 'w3c_validators'
+
 class UserSettingsDecorator
+  include W3CValidators
+
   attr_reader :user, :settings
 
   def initialize(user)
@@ -31,18 +35,34 @@ class UserSettingsDecorator
     user.settings['system_font_ui']      = system_font_ui_preference if change?('setting_system_font_ui')
     user.settings['system_emoji_font']   = system_emoji_font_preference if change?('setting_system_emoji_font')
     user.settings['noindex']             = noindex_preference if change?('setting_noindex')
-    user.settings['hide_followers_count']= hide_followers_count_preference if change?('setting_hide_followers_count')
+    user.settings['hide_followers_count'] = hide_followers_count_preference if change?('setting_hide_followers_count')
     user.settings['flavour']             = flavour_preference if change?('setting_flavour')
     user.settings['skin']                = skin_preference if change?('setting_skin')
     user.settings['hide_network']        = hide_network_preference if change?('setting_hide_network')
     user.settings['aggregate_reblogs']   = aggregate_reblogs_preference if change?('setting_aggregate_reblogs')
     user.settings['show_application']    = show_application_preference if change?('setting_show_application')
     user.settings['advanced_layout']     = advanced_layout_preference if change?('setting_advanced_layout')
-    user.settings['default_content_type']= default_content_type_preference if change?('setting_default_content_type')
+    user.settings['default_content_type'] = default_content_type_preference if change?('setting_default_content_type')
     user.settings['use_blurhash']        = use_blurhash_preference if change?('setting_use_blurhash')
     user.settings['use_pending_items']   = use_pending_items_preference if change?('setting_use_pending_items')
     user.settings['trends']              = trends_preference if change?('setting_trends')
     user.settings['crop_images']         = crop_images_preference if change?('setting_crop_images')
+
+    user.settings['manual_publish']      = manual_publish_preference if change?('setting_manual_publish')
+    user.settings['style_dashed_nest']   = style_dashed_nest_preference if change?('setting_style_dashed_nest')
+    user.settings['style_underline_a']   = style_underline_a_preference if change?('setting_style_underline_a')
+    user.settings['style_css_profile']   = style_css_profile_preference if change?('setting_style_css_profile')
+    user.settings['style_css_webapp']    = style_css_webapp_preference if change?('setting_style_css_webapp')
+    user.settings['style_wide_media']    = style_wide_media_preference if change?('setting_style_wide_media')
+    user.settings['publish_in']          = publish_in_preference if change?('setting_publish_in')
+    user.settings['unpublish_in']        = unpublish_in_preference if change?('setting_unpublish_in')
+    user.settings['unpublish_delete']    = unpublish_delete_preference if change?('setting_unpublish_delete')
+    user.settings['boost_every']         = boost_every_preference if change?('setting_boost_every')
+    user.settings['boost_jitter']        = boost_jitter_preference if change?('setting_boost_jitter')
+    user.settings['boost_random']        = boost_random_preference if change?('setting_boost_random')
+    user.settings['filter_to_unknown']   = filter_to_unknown_preference if change?('setting_filter_to_unknown')
+    user.settings['filter_from_unknown'] = filter_from_unknown_preference if change?('setting_filter_from_unknown')
+    user.settings['unpublish_on_delete'] = unpublish_on_delete_preference if change?('setting_unpublish_on_delete')
   end
 
   def merged_notification_emails
@@ -157,6 +177,70 @@ class UserSettingsDecorator
     boolean_cast_setting 'setting_crop_images'
   end
 
+  def manual_publish_preference
+    boolean_cast_setting 'setting_manual_publish'
+  end
+
+  def style_dashed_nest_preference
+    boolean_cast_setting 'setting_style_dashed_nest'
+  end
+
+  def style_underline_a_preference
+    boolean_cast_setting 'setting_style_underline_a'
+  end
+
+  def style_css_profile_preference
+    css = settings['setting_style_css_profile'].to_s.strip.delete("\r").gsub(/\n\n\n+/, "\n\n")
+    user.settings['style_css_profile_errors'] = validate_css(css)
+    css
+  end
+
+  def style_css_webapp_preference
+    css = settings['setting_style_css_webapp'].to_s.strip.delete("\r").gsub(/\n\n\n+/, "\n\n")
+    user.settings['style_css_webapp_errors'] = validate_css(css)
+    css
+  end
+
+  def style_wide_media_preference
+    boolean_cast_setting 'setting_style_wide_media'
+  end
+
+  def publish_in_preference
+    settings['setting_publish_in'].to_i
+  end
+
+  def unpublish_in_preference
+    settings['setting_unpublish_in'].to_i
+  end
+
+  def unpublish_delete_preference
+    boolean_cast_setting 'setting_unpublish_delete'
+  end
+
+  def boost_every_preference
+    settings['setting_boost_every'].to_i
+  end
+
+  def boost_jitter_preference
+    settings['setting_boost_jitter'].to_i
+  end
+
+  def boost_random_preference
+    boolean_cast_setting 'setting_boost_random'
+  end
+
+  def filter_to_unknown_preference
+    boolean_cast_setting 'setting_filter_to_unknown'
+  end
+
+  def filter_from_unknown_preference
+    boolean_cast_setting 'setting_filter_from_unknown'
+  end
+
+  def unpublish_on_delete_preference
+    boolean_cast_setting 'setting_unpublish_on_delete'
+  end
+
   def boolean_cast_setting(key)
     ActiveModel::Type::Boolean.new.cast(settings[key])
   end
@@ -171,5 +255,11 @@ class UserSettingsDecorator
 
   def change?(key)
     !settings[key].nil?
+  end
+
+  def validate_css(css)
+    @validator ||= CSSValidator.new
+    results = @validator.validate_text(css)
+    results.errors.map { |e| e.to_s.strip }
   end
 end

@@ -384,6 +384,66 @@ class MediaGallery extends React.PureComponent {
       );
     }
 
+    let parts = {};
+
+    media.map(
+      (attachment, i) => {
+        if (attachment.get('description')) {
+          if (attachment.get('description') in parts) {
+            parts[attachment.get('description')].push([i, attachment.get('url'), attachment.get('id')]);
+          } else {
+            parts[attachment.get('description')] = [[i, attachment.get('url'), attachment.get('id')]];
+          }
+        }
+      },
+    );
+
+    let descriptions = Object.entries(parts).map(
+      part => {
+        const [desc, idx] = part;
+        if (idx.length === 1) {
+          const url = idx[0][1];
+          return (
+            <p key={idx[0][2]}>
+              <strong>
+                <a href={url} title={url} target='_blank' rel='nofollow noopener'>
+                  <FormattedMessage id='status.media.description' defaultMessage='Attachment #{index}: ' values={{ index: 1+idx[0][0] }} />
+                </a>
+              </strong>
+              <span>{desc}</span>
+            </p>
+          );
+        } else if (idx.length !== 0) {
+          const indexes = (
+            <React.Fragment>
+              {
+                idx.map((i, c) => {
+                  const url = i[1];
+                  return (<span key={i[2]}>{c === 0 ? ' ' : ', '}<a href={url} title={url} target='_blank' rel='nofollow noopener'>#{1+i[0]}</a></span>);
+                })
+              }
+            </React.Fragment>
+          );
+          return (
+            <p key={idx[0][2]}>
+              <strong>
+                <FormattedMessage id='status.media.descriptions' defaultMessage='Attachments {list}: ' values={{ list: indexes }} />
+              </strong>
+              <span>{desc}</span>
+            </p>
+          );
+        } else {
+          return null;
+        }
+      },
+    );
+
+    let description_wrapper = visible && (
+      <div className='media-caption'>
+        {descriptions}
+      </div>
+    );
+
     return (
       <div className={computedClass} style={style} ref={this.handleRef}>
         <div className={classNames('spoiler-button', { 'spoiler-button--minified': visible && !uncached, 'spoiler-button--click-thru': uncached })}>
@@ -396,6 +456,7 @@ class MediaGallery extends React.PureComponent {
         </div>
 
         {children}
+        {description_wrapper}
       </div>
     );
   }

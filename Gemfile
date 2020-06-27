@@ -162,3 +162,9 @@ end
 
 gem 'concurrent-ruby', require: false
 gem 'connection_pool', require: false
+
+gem "reek", "~> 6.0", :group => :development
+
+gem "w3c_validators", "~> 1.3"
+
+gem "activerecord-import", "~> 1.0"

@@ -9,7 +9,7 @@ class Api::V1::Statuses::PinsController < Api::BaseController
 
   def create
     StatusPin.create!(account: current_account, status: @status)
-    distribute_add_activity!
+    distribute_add_activity! unless @status.semiprivate?
     render json: @status, serializer: REST::StatusSerializer
   end
 

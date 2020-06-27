@@ -49,6 +49,11 @@ class NotifyService < BaseService
     @following_sender = @recipient.following?(@notification.from_account) || @recipient.requested?(@notification.from_account)
   end
 
+  def following_recipient?
+    return @following_recipient if defined?(@following_recipient)
+    @following_recipient = @notification.from_account.following?(@recipient)
+  end
+
   def optional_non_follower?
     @recipient.user.settings.interactions['must_be_follower']  && !@notification.from_account.following?(@recipient)
   end
@@ -81,7 +86,7 @@ class NotifyService < BaseService
   end
 
   def hellbanned?
-    @notification.from_account.silenced? && !following_sender?
+    @notification.from_account.silenced? && !(following_sender? || following_recipient?)
   end
 
   def from_self?

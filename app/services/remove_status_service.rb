@@ -15,13 +15,15 @@ class RemoveStatusService < BaseService
     @status   = status
     @account  = status.account
     @tags     = status.tags.pluck(:name).to_a
-    @mentions = status.active_mentions.includes(:account).to_a
+    @mentions = status.mentions.includes(:account).to_a
     @reblogs  = status.reblogs.includes(:account).to_a
     @options  = options
 
+    return unless status.published? || @options[:unpublished]
+
     RedisLock.acquire(lock_options) do |lock|
       if lock.acquired?
-        remove_from_self if status.account.local?
+        remove_from_self if status.account.local? && !@options[:unpublish]
         remove_from_followers
         remove_from_lists
         remove_from_affected
@@ -30,10 +32,15 @@ class RemoveStatusService < BaseService
         remove_from_public
         remove_from_media if status.media_attachments.any?
         remove_from_direct if status.direct_visibility?
-        remove_from_spam_check
-        remove_media
+        remove_from_spam_check unless @options[:unpublish]
+        remove_media unless @options[:unpublish]
 
-        @status.destroy! if @options[:immediate] || !@status.reported?
+        if @options[:immediate] || !(@options[:unpublish] || @status.reported?)
+          @status.destroy!
+        else
+          @status.update(published: false, expires_at: nil, local_only: @status.local?)
+          DistributionWorker.perform_async(@status.id) if @status.local?
+        end
       else
         raise Mastodon::RaceConditionError
       end
@@ -48,6 +55,7 @@ class RemoveStatusService < BaseService
 
     remove_from_remote_followers
     remove_from_remote_affected
+    remove_from_remote_shared
   end
 
   private
@@ -107,12 +115,18 @@ class RemoveStatusService < BaseService
 
   def relay!
     ActivityPub::DeliveryWorker.push_bulk(Relay.enabled.pluck(:inbox_url)) do |inbox_url|
+      [signed_activity_json(Addressable::URI.parse(inbox_url).host), @account.id, inbox_url]
+    end
+  end
+
+  def remove_from_remote_shared
+    ActivityPub::DeliveryWorker.push_bulk(Account.remote.activitypub.where.not(shared_inbox_url: '').distinct.select(:shared_inbox_url).pluck(:shared_inbox_url)) do |inbox_url|
       [signed_activity_json, @account.id, inbox_url]
     end
   end
 
   def signed_activity_json
-    @signed_activity_json ||= Oj.dump(serialize_payload(@status, @status.reblog? ? ActivityPub::UndoAnnounceSerializer : ActivityPub::DeleteSerializer, signer: @account))
+    @signed_activity_json ||= Oj.dump(serialize_payload(@status, @status.reblog? && @status.spoiler_text.blank? ? ActivityPub::UndoAnnounceSerializer : ActivityPub::DeleteSerializer, signer: @account))
   end
 
   def remove_reblogs
@@ -130,7 +144,7 @@ class RemoveStatusService < BaseService
       featured_tag.decrement(@status.id)
     end
 
-    return unless @status.public_visibility?
+    return unless @status.distributable?
 
     @tags.each do |hashtag|
       redis.publish("timeline:hashtag:#{hashtag.mb_chars.downcase}", @payload)
@@ -139,7 +153,7 @@ class RemoveStatusService < BaseService
   end
 
   def remove_from_public
-    return unless @status.public_visibility?
+    return unless @status.distributable?
 
     redis.publish('timeline:public', @payload)
     if @status.local?
@@ -150,7 +164,7 @@ class RemoveStatusService < BaseService
   end
 
   def remove_from_media
-    return unless @status.public_visibility?
+    return unless @status.distributable?
 
     redis.publish('timeline:public:media', @payload)
     if @status.local?

@@ -10,6 +10,7 @@ import {
 import {
   STATUS_MUTE_SUCCESS,
   STATUS_UNMUTE_SUCCESS,
+  STATUS_PUBLISH_SUCCESS,
 } from 'flavours/glitch/actions/statuses';
 import {
   TIMELINE_DELETE,
@@ -56,6 +57,8 @@ export default function statuses(state = initialState, action) {
     return state.setIn([action.id, 'muted'], true);
   case STATUS_UNMUTE_SUCCESS:
     return state.setIn([action.id, 'muted'], false);
+  case STATUS_PUBLISH_SUCCESS:
+    return state.setIn([action.id, 'published'], true);
   case TIMELINE_DELETE:
     return deleteStatus(state, action.id, action.references);
   default:

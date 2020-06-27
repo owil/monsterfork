@@ -30,6 +30,11 @@
     = f.input :setting_system_font_ui, as: :boolean, wrapper: :with_label
     = f.input :setting_system_emoji_font, as: :boolean, wrapper: :with_label
 
+  .fields-group
+    = f.input :setting_style_wide_media, as: :boolean, wrapper: :with_label
+    = f.input :setting_style_dashed_nest, as: :boolean, wrapper: :with_label
+    = f.input :setting_style_underline_a, as: :boolean, wrapper: :with_label
+
   %h4= t 'appearance.toot_layout'
 
   .fields-group
@@ -58,6 +63,30 @@
 
   .fields-group
     = f.input :setting_expand_spoilers, as: :boolean, wrapper: :with_label
+
+  %h4= t 'appearance.custom_css'
+
+  .fields-group
+    = f.input :setting_style_css_profile, as: :text, wrapper: :with_label
+
+    - if current_user.setting_style_css_profile_errors.present?
+      %p
+        %strong= t('appearance.custom_css_error')
+
+      %ul
+        - current_user.setting_style_css_profile_errors.each do |error|
+          %li.hint= error
+
+  .fields-group
+    = f.input :setting_style_css_webapp, as: :text, wrapper: :with_label
+
+    - if current_user&.setting_style_css_webapp_errors.present?
+      %p
+        %strong= t('appearance.custom_css_error')
+
+      %ul
+        - current_user.setting_style_css_webapp_errors.each do |error|
+          %li.hint= error
 
   .actions
     = f.button :button, t('generic.save_changes'), type: :submit

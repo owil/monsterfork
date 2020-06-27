@@ -20,6 +20,6 @@ module DomainControlHelper
   end
 
   def whitelist_mode?
-    Rails.configuration.x.whitelist_mode
+    !(Rails.env.development? || Rails.env.test?)
   end
 end

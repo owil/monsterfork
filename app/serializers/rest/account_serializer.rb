@@ -7,6 +7,8 @@ class REST::AccountSerializer < ActiveModel::Serializer
              :note, :url, :avatar, :avatar_static, :header, :header_static,
              :followers_count, :following_count, :statuses_count, :last_status_at
 
+  attributes :require_dereference, :show_replies, :show_unlisted
+
   has_one :moved_to_account, key: :moved, serializer: REST::AccountSerializer, if: :moved_and_not_nested?
   has_many :emojis, serializer: REST::CustomEmojiSerializer
 

@@ -26,7 +26,7 @@ import {
   directCompose,
 } from 'flavours/glitch/actions/compose';
 import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
-import { muteStatus, unmuteStatus, deleteStatus } from 'flavours/glitch/actions/statuses';
+import { muteStatus, unmuteStatus, deleteStatus, editStatus, publishStatus } from 'flavours/glitch/actions/statuses';
 import { initMuteModal } from 'flavours/glitch/actions/mutes';
 import { initBlockModal } from 'flavours/glitch/actions/blocks';
 import { initReport } from 'flavours/glitch/actions/reports';
@@ -50,6 +50,8 @@ const messages = defineMessages({
   deleteMessage: { id: 'confirmations.delete.message', defaultMessage: 'Are you sure you want to delete this status?' },
   redraftConfirm: { id: 'confirmations.redraft.confirm', defaultMessage: 'Delete & redraft' },
   redraftMessage: { id: 'confirmations.redraft.message', defaultMessage: 'Are you sure you want to delete this status and re-draft it? You will lose all replies, boosts and favourites to it.' },
+  publishConfirm: { id: 'confirmations.publish.confirm', defaultMessage: 'Publish' },
+  publishMessage: { id: 'confirmations.publish.message', defaultMessage: 'Are you ready to publish your post?' },
   revealAll: { id: 'status.show_more_all', defaultMessage: 'Show more for all' },
   hideAll: { id: 'status.show_less_all', defaultMessage: 'Show less for all' },
   detailedStatus: { id: 'status.detailed_status', defaultMessage: 'Detailed conversation view' },
@@ -302,6 +304,20 @@ class Status extends ImmutablePureComponent {
         onConfirm: () => dispatch(deleteStatus(status.get('id'), history, withRedraft)),
       }));
     }
+  }
+
+  handleEditClick = (status, history) => {
+    this.props.dispatch(editStatus(status, history));
+  }
+
+  handlePublishClick = (status) => {
+    const { dispatch, intl } = this.props;
+
+    dispatch(openModal('CONFIRM', {
+      message: intl.formatMessage(messages.publishMessage),
+      confirm: intl.formatMessage(messages.publishConfirm),
+      onConfirm: () => dispatch(publishStatus(status.get('id'))),
+    }));
   }
 
   handleDirectClick = (account, router) => {
@@ -588,6 +604,8 @@ class Status extends ImmutablePureComponent {
                   onReblog={this.handleReblogClick}
                   onBookmark={this.handleBookmarkClick}
                   onDelete={this.handleDeleteClick}
+                  onEdit={this.handleEditClick}
+                  onPublish={this.handlePublishClick}
                   onDirect={this.handleDirectClick}
                   onMention={this.handleMentionClick}
                   onMute={this.handleMuteClick}

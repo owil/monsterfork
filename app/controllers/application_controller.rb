@@ -12,6 +12,7 @@ class ApplicationController < ActionController::Base
   include SessionTrackingConcern
   include CacheConcern
   include DomainControlHelper
+  include SignatureVerification
 
   helper_method :current_account
   helper_method :current_session
@@ -48,7 +49,7 @@ class ApplicationController < ActionController::Base
   end
 
   def authorized_fetch_mode?
-    ENV['AUTHORIZED_FETCH'] == 'true' || Rails.configuration.x.whitelist_mode
+    !(Rails.env.development? || Rails.env.test?)
   end
 
   def public_fetch_mode?
@@ -68,7 +69,29 @@ class ApplicationController < ActionController::Base
   end
 
   def require_functional!
-    redirect_to edit_user_registration_path unless current_user.functional?
+    redirect_to edit_user_registration_path unless current_user&.functional?
+  end
+
+  def require_authenticated!
+    return if current_account?
+
+    respond_to do |format|
+      format.any { redirect_to edit_user_registration_path }
+      format.json { forbidden }
+    end
+  end
+
+  def require_known!(account)
+    return if authenticated_or_following?(account)
+
+    respond_to do |format|
+      format.any { redirect_to edit_user_registration_path }
+      format.json { forbidden }
+    end
+  end
+
+  def require_following!(account)
+    forbidden unless following?(account)
   end
 
   def after_sign_out_path_for(_resource_or_scope)
@@ -197,7 +220,7 @@ class ApplicationController < ActionController::Base
   def current_account
     return @current_account if defined?(@current_account)
 
-    @current_account = current_user&.account
+    @current_account = current_user&.account.presence || signed_request_account
   end
 
   def current_session
@@ -224,5 +247,22 @@ class ApplicationController < ActionController::Base
       end
       format.json { render json: { error: Rack::Utils::HTTP_STATUS_CODES[code] }, status: code }
     end
+  end
+
+  def following?(account)
+    return if account.blank?
+
+    @account_following ||= {}
+    return @account_following[account.id] if @account_following[account.id].present?
+
+    @account_following[account.id] = current_account.present? && (current_account.id == account.id || current_account.following?(account))
+  end
+
+  def authenticated_or_following?(account)
+    current_user&.account.present? || following?(account)
+  end
+
+  def current_account?
+    current_account.present?
   end
 end

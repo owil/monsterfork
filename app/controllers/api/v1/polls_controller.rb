@@ -16,6 +16,7 @@ class Api::V1::PollsController < Api::BaseController
   def set_poll
     @poll = Poll.attached.find(params[:id])
     authorize @poll.status, :show?
+    authorize @poll.status.reblog, :show? if @poll.status.reblog?
   rescue Mastodon::NotPermittedError
     not_found
   end

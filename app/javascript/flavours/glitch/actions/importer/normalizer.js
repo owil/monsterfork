@@ -12,7 +12,7 @@ const makeEmojiMap = record => record.emojis.reduce((obj, emoji) => {
 
 export function searchTextFromRawStatus (status) {
   const spoilerText   = status.spoiler_text || '';
-  const searchContent = ([spoilerText, status.content].concat((status.poll && status.poll.options) ? status.poll.options.map(option => option.title) : [])).concat(status.media_attachments.map(att => att.description)).join('\n\n').replace(/<br\s*\/?>/g, '\n').replace(/<\/p><p>/g, '\n\n');
+  const searchContent = ([spoilerText, status.content].concat((status.poll && status.poll.options) ? status.poll.options.map(option => option.title) : [])).concat(status.media_attachments.map(att => att.description)).concat(status.tags ? status.tags.map(tag => tag.name) : []).join('\n\n').replace(/<br\s*\/?>/g, '\n').replace(/<\/p><p>/g, '\n\n');
   return domParser.parseFromString(searchContent, 'text/html').documentElement.textContent;
 }
 
@@ -53,11 +53,15 @@ export function normalizeStatus(status, normalOldStatus) {
     normalStatus.poll = status.poll.id;
   }
 
+  const oldUpdatedAt = normalOldStatus ? normalOldStatus.updated_at || normalOldStatus.created_at : null;
+  const newUpdatedAt = normalStatus ? normalStatus.updated_at || normalStatus.created_at : null;
+
   // Only calculate these values when status first encountered
   // Otherwise keep the ones already in the reducer
-  if (normalOldStatus) {
+  if (normalOldStatus && oldUpdatedAt === newUpdatedAt) {
     normalStatus.search_index = normalOldStatus.get('search_index');
     normalStatus.contentHtml = normalOldStatus.get('contentHtml');
+    normalStatus.articleHtml = normalOldStatus.get('articleHtml');
     normalStatus.spoilerHtml = normalOldStatus.get('spoilerHtml');
   } else {
     const spoilerText   = normalStatus.spoiler_text || '';
@@ -66,6 +70,7 @@ export function normalizeStatus(status, normalOldStatus) {
 
     normalStatus.search_index = domParser.parseFromString(searchContent, 'text/html').documentElement.textContent;
     normalStatus.contentHtml  = emojify(normalStatus.content, emojiMap);
+    normalStatus.articleHtml  = normalStatus.article_content ? emojify(normalStatus.article_content, emojiMap) : normalStatus.contentHtml;
     normalStatus.spoilerHtml  = emojify(escapeTextContentForBrowser(spoilerText), emojiMap);
   }
 

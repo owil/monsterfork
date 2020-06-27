@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength
 class ActivityPub::Activity::Create < ActivityPub::Activity
+  include ImgProxyHelper
+
   def perform
     dereference_object!
 
@@ -43,7 +46,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   end
 
   def create_status
-    return reject_payload! if unsupported_object_type? || invalid_origin?(object_uri) || tombstone_exists? || !related_to_local_activity?
+    return reject_payload! if unsupported_object_type? || invalid_origin?(object_uri) || tombstone_exists? || !related_to_local_activity? || twitter_retweet?
 
     RedisLock.acquire(lock_options) do |lock|
       if lock.acquired?
@@ -51,7 +54,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
         @status = find_existing_status
 
-        if @status.nil?
+        if @status.nil? || @options[:update]
           process_status
         elsif @options[:delivered_to_account_id].present?
           postprocess_audience_and_deliver
@@ -72,17 +75,33 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     as_array(@object['cc'] || @json['cc']).map { |x| value_or_id(x) }
   end
 
+  def object_uri
+    @object['id'] || super
+  end
+
   def process_status
     @tags     = []
     @mentions = []
     @params   = {}
 
-    process_status_params
+    unless @status.nil?
+      reblog_uri.blank? ? process_status_update_params : process_reblog_update_params
+      process_tags
+      process_audience
+
+      @status = UpdateStatusService.new.call(@status, @params, @mentions, @tags)
+      resolve_thread(@status)
+      fetch_replies(@status)
+      return @status
+    end
+
+    reblog_uri.blank? ? process_status_params : process_reblog_params
     process_tags
     process_audience
 
     ApplicationRecord.transaction do
       @status = Status.create!(@params)
+      process_inline_images!
       attach_tags(@status)
     end
 
@@ -108,7 +127,10 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
         text: text_from_content || '',
         language: detected_language,
         spoiler_text: converted_object_type? ? '' : (text_from_summary || ''),
+        title: text_from_title,
+        reblog: reblogged_status,
         created_at: @object['published'],
+        expires_at: @object['expires'],
         override_timestamps: @options[:override_timestamps],
         reply: @object['inReplyTo'].present?,
         sensitive: @object['sensitive'] || false,
@@ -117,6 +139,55 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
         conversation: conversation_from_uri(@object['conversation']),
         media_attachment_ids: process_attachments.take(4).map(&:id),
         poll: process_poll,
+      }
+    end
+  end
+
+  def process_status_update_params
+    @params = begin
+      {
+        text: text_from_content || '',
+        language: detected_language,
+        spoiler_text: converted_object_type? ? '' : (text_from_summary || ''),
+        title: text_from_title,
+        sensitive: @object['sensitive'] || false,
+        visibility: visibility_from_audience,
+        expires_at: @object['expires'],
+        media_attachment_ids: process_attachments.take(4).map(&:id),
+      }
+    end
+  end
+
+  def process_reblog_params
+    @params = begin
+      {
+        uri: object_uri,
+        url: object_url || object_uri,
+        account: @account,
+        text: text_from_content || '',
+        language: detected_language,
+        spoiler_text: converted_object_type? ? '' : (text_from_summary || ''),
+        title: text_from_title,
+        reblog: reblogged_status,
+        created_at: @object['published'],
+        override_timestamps: @options[:override_timestamps],
+        reply: @object['inReplyTo'].present?,
+        sensitive: @object['sensitive'] || false,
+        visibility: visibility_from_audience,
+        thread: replied_to_status,
+      }
+    end
+  end
+
+  def process_reblog_update_params
+    @params = begin
+      {
+        text: text_from_content || '',
+        language: detected_language,
+        spoiler_text: converted_object_type? ? '' : (text_from_summary || ''),
+        title: text_from_title,
+        sensitive: @object['sensitive'] || false,
+        visibility: visibility_from_audience,
       }
     end
   end
@@ -240,7 +311,21 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
       begin
         href             = Addressable::URI.parse(attachment['url']).normalize.to_s
-        media_attachment = MediaAttachment.create(account: @account, remote_url: href, thumbnail_remote_url: icon_url_from_attachment(attachment), description: attachment['summary'].presence || attachment['name'].presence, focus: attachment['focalPoint'], blurhash: supported_blurhash?(attachment['blurhash']) ? attachment['blurhash'] : nil)
+        media_attachment = MediaAttachment.find_by(account: @account, remote_url: href)
+
+        if media_attachment.nil?
+          media_attachment = MediaAttachment.create(account: @account, remote_url: href, thumbnail_remote_url: icon_url_from_attachment(attachment), description: attachment['summary'].presence || attachment['name'].presence, focus: attachment['focalPoint'], blurhash: supported_blurhash?(attachment['blurhash']) ? attachment['blurhash'] : nil)
+        else
+          updated_description = attachment['summary'].presence || media_attachment[:description].presence || attachment['name'].presence || media_attachment[:name].presence
+          updated_focus = attachment['focalPoint'].presence || media_attachment['focalPoint'].presence
+          updated_blurhash = supported_blurhash?(attachment['blurhash']) ? attachment['blurhash'] : media_attachment[:blurhash]
+
+          media_attachment.update(description: updated_description, focus: updated_focus, blurhash: updated_blurhash)
+
+          media_attachments << media_attachment
+          next
+        end
+
         media_attachments << media_attachment
 
         next if unsupported_media_type?(attachment['mediaType']) || skip_download?
@@ -330,22 +415,43 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   end
 
   def fetch_replies(status)
+    FetchReplyWorker.perform_async(@object['root']) unless invalid_root_uri?
+
     collection = @object['replies']
     return if collection.nil?
 
-    replies = ActivityPub::FetchRepliesService.new.call(status, collection, false)
-    return unless replies.nil?
-
-    uri = value_or_id(collection)
-    ActivityPub::FetchRepliesWorker.perform_async(status.id, uri) unless uri.nil?
+    if collection.is_a?(Hash)
+      ActivityPub::FetchRepliesService.new.call(status, collection)
+    else
+      uri = value_or_id(collection)
+      ActivityPub::FetchRepliesWorker.perform_async(status.id, uri) unless uri.nil?
+    end
   end
 
   def conversation_from_uri(uri)
     return nil if uri.nil?
-    return Conversation.find_by(id: OStatus::TagManager.instance.unique_tag_to_local_id(uri, 'Conversation')) if OStatus::TagManager.instance.local_id?(uri)
+
+    conversation = OStatus::TagManager.instance.local_id?(uri) ? Conversation.find_by(id: OStatus::TagManager.instance.unique_tag_to_local_id(uri, 'Conversation')) : nil
 
     begin
-      Conversation.find_or_create_by!(uri: uri)
+      conversation = Conversation.find_by(uri: uri) if conversation.blank?
+
+      if @object['inReplyTo'].blank? && replied_to_status.blank?
+        params = {
+          uri: uri,
+          root: object_uri,
+          account: @account,
+        }.freeze
+        if conversation.blank?
+          conversation = Conversation.create!(params)
+        elsif conversation.root.blank?
+          conversation.update!(params)
+        end
+      elsif conversation.blank?
+        conversation = Conversation.create!(uri: uri, account_id: nil)
+      end
+
+      conversation
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
       retry
     end
@@ -377,7 +483,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   def replied_to_status
     return @replied_to_status if defined?(@replied_to_status)
 
-    if in_reply_to_uri.blank?
+    if in_reply_to_uri.blank? || in_reply_to_uri == object_uri
       @replied_to_status = nil
     else
       @replied_to_status   = status_from_uri(in_reply_to_uri)
@@ -390,13 +496,28 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     value_or_id(@object['inReplyTo'])
   end
 
+  def reblogged_status
+    FetchRemoteStatusService.new.call(reblog_uri) if reblog_uri.present?
+  end
+
+  def reblog_uri
+    return @reblog_uri if defined?(@reblog_uri)
+
+    @reblog_uri = @object['reblog'].presence || @object['_misskey_quote'].presence
+  end
+
+  def twitter_retweet?
+    text_from_content.present? && (text_from_content.include?('<p>🐦🔗') || text_from_content.include?('<p>RT @'))
+  end
+
   def text_from_content
-    return Formatter.instance.linkify([[text_from_name, text_from_summary.presence].compact.join("\n\n"), object_url || object_uri].join(' ')) if converted_object_type?
+    return @status_text if defined?(@status_text)
+    return @status_text = Formatter.instance.linkify([[text_from_name, text_from_summary.presence].compact.join("\n\n"), object_url || object_uri].join(' ')) if converted_object_type?
 
     if @object['content'].present?
-      @object['content']
+      @status_text = @object['type'] == 'Article' ? Formatter.instance.format_article(@object['content']) : @object['content']
     elsif content_language_map?
-      @object['contentMap'].values.first
+      @status_text = @object['contentMap'].values.first
     end
   end
 
@@ -405,6 +526,14 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       @object['summary']
     elsif summary_language_map?
       @object['summaryMap'].values.first
+    end
+  end
+
+  def text_from_title
+    if @object['title'].present?
+      @object['title']
+    elsif title_language_map?
+      @object['titleMap'].values.first
     end
   end
 
@@ -442,6 +571,10 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
   def summary_language_map?
     @object['summaryMap'].is_a?(Hash) && !@object['summaryMap'].empty?
+  end
+
+  def title_language_map?
+    @object['titleMap'].is_a?(Hash) && !@object['titleMap'].empty?
   end
 
   def content_language_map?
@@ -490,6 +623,10 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     Account.local.where(username: local_usernames).exists?
   end
 
+  def invalid_root_uri?
+    @object['root'].blank? || [object_uri, @object['url']].include?(@object['root']) || status_from_uri(@object['root'])
+  end
+
   def tombstone_exists?
     Tombstone.exists?(uri: object_uri)
   end
@@ -524,3 +661,4 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     { redis: Redis.current, key: "vote:#{replied_to_status.poll_id}:#{@account.id}" }
   end
 end
+# rubocop:enable Metrics/ClassLength

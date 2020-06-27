@@ -12,11 +12,12 @@ class ActivityPub::ReplyDistributionWorker
   def perform(status_id)
     @status  = Status.find(status_id)
     @account = @status.thread&.account
+    @payload = {}
 
     return unless @account.present? && @status.distributable?
 
     ActivityPub::DeliveryWorker.push_bulk(inboxes) do |inbox_url|
-      [payload, @status.account_id, inbox_url]
+      [payload(Addressable::URI.parse(inbox_url).host), @status.account_id, inbox_url]
     end
   rescue ActiveRecord::RecordNotFound
     true
@@ -28,7 +29,7 @@ class ActivityPub::ReplyDistributionWorker
     @inboxes ||= @account.followers.inboxes
   end
 
-  def payload
-    @payload ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status), ActivityPub::ActivitySerializer, signer: @status.account))
+  def payload(domain)
+    @payload[domain] ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status, update: true, embed: false), ActivityPub::ActivitySerializer, signer: @status.account, target_domain: domain))
   end
 end

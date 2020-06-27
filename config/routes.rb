@@ -35,6 +35,9 @@ Rails.application.routes.draw do
   get 'intent', to: 'intents#show'
   get 'custom.css', to: 'custom_css#show', as: :custom_css
 
+  get '/custom/:id/profile.css', to: 'user_profile_css#show', as: :user_profile_css
+  get '/custom/:id/webapp.css', to: 'user_webapp_css#show', as: :user_webapp_css
+
   resource :instance_actor, path: 'actor', only: [:show] do
     resource :inbox, only: [:create], module: :activitypub
     resource :outbox, only: [:show], module: :activitypub
@@ -52,10 +55,10 @@ Rails.application.routes.draw do
 
   devise_for :users, path: 'auth', controllers: {
     omniauth_callbacks: 'auth/omniauth_callbacks',
-    sessions:           'auth/sessions',
-    registrations:      'auth/registrations',
-    passwords:          'auth/passwords',
-    confirmations:      'auth/confirmations',
+    sessions: 'auth/sessions',
+    registrations: 'auth/registrations',
+    passwords: 'auth/passwords',
+    confirmations: 'auth/confirmations',
   }
 
   get '/users/:username', to: redirect('/@%{username}'), constraints: lambda { |req| req.format.nil? || req.format.html? }
@@ -88,8 +91,11 @@ Rails.application.routes.draw do
   resource :inbox, only: [:create], module: :activitypub
 
   get '/@:username', to: 'accounts#show', as: :short_account
+  get '/@:username/threads', to: 'accounts#show', as: :short_account_threads
   get '/@:username/with_replies', to: 'accounts#show', as: :short_account_with_replies
   get '/@:username/media', to: 'accounts#show', as: :short_account_media
+  get '/@:username/reblogs', to: 'accounts#show', as: :short_account_reblogs
+  get '/@:username/mentions', to: 'accounts#show', as: :short_account_mentions
   get '/@:username/tagged/:tag', to: 'accounts#show', as: :short_account_tag
   get '/@:account_username/:id', to: 'statuses#show', as: :short_account_status
   get '/@:account_username/:id/embed', to: 'statuses#embed', as: :embed_short_account_status
@@ -113,6 +119,8 @@ Rails.application.routes.draw do
       resource :appearance, only: [:show, :update], controller: :appearance
       resource :notifications, only: [:show, :update]
       resource :other, only: [:show, :update], controller: :other
+      resource :filters, only: [:show, :update], controller: :filters
+      resource :publishing, only: [:show, :update], controller: :publishing
     end
 
     resource :import, only: [:show, :create]
@@ -307,7 +315,7 @@ Rails.application.routes.draw do
 
     # JSON / REST API
     namespace :v1 do
-      resources :statuses, only: [:create, :show, :destroy] do
+      resources :statuses, only: [:create, :update, :show, :destroy] do
         scope module: :statuses do
           resources :reblogged_by, controller: :reblogged_by_accounts, only: :index
           resources :favourited_by, controller: :favourited_by_accounts, only: :index
@@ -320,11 +328,16 @@ Rails.application.routes.draw do
           resource :bookmark, only: :create
           post :unbookmark, to: 'bookmarks#destroy'
 
-          resource :mute, only: :create
+          resource :mute, only: [:create, :update]
           post :unmute, to: 'mutes#destroy'
 
           resource :pin, only: :create
           post :unpin, to: 'pins#destroy'
+
+          resource :hide, only: :create
+          post :unhide, to: 'mutes#destroy'
+
+          resource :publish, only: :create
         end
 
         member do
@@ -408,6 +421,8 @@ Rails.application.routes.draw do
       resource :domain_blocks, only: [:show, :create, :destroy]
       resource :directory, only: [:show]
 
+      resource :domain_permissions, only: [:show, :create, :update, :destroy]
+
       resources :follow_requests, only: [:index] do
         member do
           post :authorize
@@ -486,6 +501,9 @@ Rails.application.routes.draw do
           resource :action, only: [:create], controller: 'account_actions'
         end
 
+        resource :domain_blocks, only: [:show]
+        resource :domain_allows, only: [:show]
+
         resources :reports, only: [:index, :show] do
           member do
             post :assign_to_self
@@ -516,7 +534,7 @@ Rails.application.routes.draw do
   get '/web/(*any)', to: 'home#index', as: :web
 
   get '/about',        to: 'about#show'
-  get '/about/more',   to: 'about#more'
+  get '/about/more',   to: redirect('/about')
   get '/terms',        to: 'about#terms'
 
   match '/', via: [:post, :put, :patch, :delete], to: 'application#raise_not_found', format: false

@@ -5,13 +5,13 @@ class RemoteInteractionController < ApplicationController
 
   layout 'modal'
 
-  before_action :authenticate_user!, if: :whitelist_mode?
+  #before_action :authenticate_user!, if: :whitelist_mode?
   before_action :set_interaction_type
   before_action :set_status
   before_action :set_body_classes
   before_action :set_pack
 
-  skip_before_action :require_functional!, unless: :whitelist_mode?
+  skip_before_action :require_functional! #, unless: :whitelist_mode?
 
   def new
     @remote_follow = RemoteFollow.new(session_params)

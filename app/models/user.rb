@@ -41,6 +41,8 @@
 #  sign_in_token             :string
 #  sign_in_token_sent_at     :datetime
 #  webauthn_id               :string
+#  username                  :string
+#  kobold                    :string
 #
 
 class User < ApplicationRecord
@@ -89,7 +91,7 @@ class User < ApplicationRecord
   validates :agreement, acceptance: { allow_nil: false, accept: [true, 'true', '1'] }, on: :create
 
   scope :recent, -> { order(id: :desc) }
-  scope :pending, -> { where(approved: false) }
+  scope :pending, -> { where(approved: false).where.not(kobold: '') }
   scope :approved, -> { where(approved: true) }
   scope :confirmed, -> { where.not(confirmed_at: nil) }
   scope :enabled, -> { where(disabled: false) }
@@ -116,6 +118,12 @@ class User < ApplicationRecord
            :expand_spoilers, :default_language, :aggregate_reblogs, :show_application,
            :advanced_layout, :use_blurhash, :use_pending_items, :trends, :crop_images,
            :default_content_type, :system_emoji_font,
+           :manual_publish, :style_dashed_nest, :style_underline_a, :style_css_profile,
+           :style_css_profile_errors, :style_css_webapp, :style_css_webapp_errors,
+           :style_wide_media,
+           :publish_in, :unpublish_in, :unpublish_delete, :boost_every, :boost_jitter,
+           :boost_random,
+           :filter_to_unknown, :filter_from_unknown, :unpublish_on_delete,
            to: :settings, prefix: :setting, allow_nil: false
 
   attr_reader :invite_code, :sign_in_token_attempt
@@ -149,7 +157,7 @@ class User < ApplicationRecord
 
     if new_user && approved?
       prepare_new_user!
-    elsif new_user
+    elsif new_user && user_might_not_be_a_spam_bot
       notify_staff_about_pending_account!
     end
   end
@@ -307,6 +315,17 @@ class User < ApplicationRecord
     super
   end
 
+  def send_confirmation_instructions
+    unless approved? || user_might_not_be_a_spam_bot
+      invite_request&.destroy
+      account&.destroy
+      destroy
+      return false
+    end
+
+    super
+  end
+
   def reset_password!(new_password, new_password_confirmation)
     return false if encrypted_password.blank?
 
@@ -432,5 +451,18 @@ class User < ApplicationRecord
 
   def validate_email_dns?
     email_changed? && !(Rails.env.test? || Rails.env.development?)
+  end
+
+  def user_might_not_be_a_spam_bot
+    username == account.username && invite_request&.text.present? && kobold_hash_matches?
+  end
+
+  def kobold_hash_matches?
+    kobold.present? && kobold == kobold_hash
+  end
+
+  def kobold_hash
+    value = [account.username, username.downcase, email, invite_request.text].compact.map(&:downcase).join("\u{F0666}")
+    Digest::SHA512.hexdigest(value).upcase
   end
 end

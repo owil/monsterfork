@@ -9,13 +9,13 @@ class TagsController < ApplicationController
   layout 'public'
 
   before_action :require_signature!, if: -> { request.format == :json && authorized_fetch_mode? }
-  before_action :authenticate_user!, if: :whitelist_mode?
+  # before_action :authenticate_user!, if: :whitelist_mode?
   before_action :set_tag
   before_action :set_local
   before_action :set_body_classes
   before_action :set_instance_presenter
 
-  skip_before_action :require_functional!, unless: :whitelist_mode?
+  skip_before_action :require_functional! # , unless: :whitelist_mode?
 
   def show
     respond_to do |format|
@@ -37,10 +37,12 @@ class TagsController < ApplicationController
       format.json do
         expires_in 3.minutes, public: public_fetch_mode?
 
-        @statuses = HashtagQueryService.new.call(@tag, filter_params, current_account, @local).paginate_by_max_id(PAGE_SIZE, params[:max_id])
+        @statuses = HashtagQueryService.new.call(@tag, filter_params, current_account, @local)
+        @statuses = @statuses.without_semiprivate unless authenticated_or_following?(@account)
+        @statuses = @statuses.paginate_by_max_id(PAGE_SIZE, params[:max_id])
         @statuses = cache_collection(@statuses, Status)
 
-        render json: collection_presenter, serializer: ActivityPub::CollectionSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json'
+        render json: collection_presenter, serializer: ActivityPub::CollectionSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json', target_domain: current_account&.domain
       end
     end
   end

@@ -51,15 +51,12 @@ class ActivityPub::Activity::Delete < ActivityPub::Activity
 
   def replied_to_status
     return @replied_to_status if defined?(@replied_to_status)
+
     @replied_to_status = @status.thread
   end
 
-  def reply_to_local?
-    !replied_to_status.nil? && replied_to_status.account.local?
-  end
-
   def forward_for_reply
-    return unless @json['signature'].present? && reply_to_local?
+    return if @json['signature'].blank? || replied_to_status.blank?
 
     inboxes = replied_to_status.account.followers.inboxes - [@account.preferred_inbox_url]
 

@@ -24,6 +24,10 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   attribute :moved_to, if: :moved?
   attribute :also_known_as, if: :also_known_as?
 
+  context_extensions :require_dereference, :show_replies, :private, :require_auth, :metadata, :server_metadata
+  attributes :require_dereference, :show_replies, :show_unlisted, :private, :require_auth
+  attributes :metadata, :server_metadata
+
   class EndpointsSerializer < ActivityPub::Serializer
     include RoutingHelper
 
@@ -135,6 +139,14 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   def virtual_attachments
     object.fields + object.identity_proofs.active
+  end
+
+  def metadata
+    object.metadata.cached_fields_json
+  end
+
+  def server_metadata
+    Mastodon::Version.server_metadata_json
   end
 
   def moved_to

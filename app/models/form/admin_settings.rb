@@ -4,6 +4,8 @@ class Form::AdminSettings
   include ActiveModel::Model
 
   KEYS = %i(
+    show_domain_allows
+
     site_contact_username
     site_contact_email
     site_title
@@ -75,6 +77,8 @@ class Form::AdminSettings
   ).freeze
 
   attr_accessor(*KEYS)
+
+  validates :show_domain_allows, inclusion: { in: %w(disabled users all) }
 
   validates :site_short_description, :site_description, html: { wrap_with: :p }
   validates :site_extended_description, :site_terms, :closed_registrations_message, html: true

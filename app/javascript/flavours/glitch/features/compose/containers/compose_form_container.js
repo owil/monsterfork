@@ -12,6 +12,7 @@ import {
   selectComposeSuggestion,
   submitCompose,
   uploadCompose,
+  resetCompose,
 } from 'flavours/glitch/actions/compose';
 import {
   openModal,
@@ -80,6 +81,10 @@ const mapDispatchToProps = (dispatch, { intl }) => ({
 
   onSubmit(routerHistory) {
     dispatch(submitCompose(routerHistory));
+  },
+
+  onClearAll() {
+    dispatch(resetCompose());
   },
 
   onClearSuggestions() {

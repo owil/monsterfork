@@ -10,5 +10,10 @@ class Scheduler::UserCleanupScheduler
       Account.where(id: batch.map(&:account_id)).delete_all
       User.where(id: batch.map(&:id)).delete_all
     end
+
+    User.where(kobold: '', approved: false).find_in_batches do |batch|
+      Account.where(id: batch.map(&:account_id)).delete_all
+      User.where(id: batch.map(&:id)).delete_all
+    end
   end
 end

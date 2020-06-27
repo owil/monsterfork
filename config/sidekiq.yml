@@ -36,3 +36,15 @@
   pghero_scheduler:
     cron: '0 0 * * *'
     class: Scheduler::PgheroScheduler
+  ambassador_scheduler:
+    every: '<%= ENV['AMBASSADOR_DELAY'] || 10 %>m'
+    class: Scheduler::AmbassadorScheduler
+  database_cleanup_scheduler:
+    every: '1d'
+    class: Scheduler::DatabaseCleanupScheduler
+  status_cleanup_scheduler:
+    every: '1m'
+    class: Scheduler::StatusCleanupScheduler
+  publish_status_scheduler:
+    every: '1m'
+    class: Scheduler::PublishStatusScheduler

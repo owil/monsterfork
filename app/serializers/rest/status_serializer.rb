@@ -6,6 +6,9 @@ class REST::StatusSerializer < ActiveModel::Serializer
              :uri, :url, :replies_count, :reblogs_count,
              :favourites_count
 
+  # Monsterfork additions
+  attributes :updated_at, :edited, :nest_level, :root
+
   attribute :favourited, if: :current_user?
   attribute :reblogged, if: :current_user?
   attribute :muted, if: :current_user?
@@ -13,9 +16,18 @@ class REST::StatusSerializer < ActiveModel::Serializer
   attribute :pinned, if: :pinnable?
   attribute :local_only if :local?
 
-  attribute :content, unless: :source_requested?
+  attribute :content
   attribute :text, if: :source_requested?
   attribute :content_type, if: :source_requested?
+
+  attribute :published if :local?
+  attribute :hidden, if: :current_user?
+  attribute :conversation_hidden, if: :current_user?
+  attribute :notify, if: :locally_owned?
+  attribute :title?, key: :article
+  attribute :article_content, if: :title?
+  attribute :publish_at, if: :locally_owned?
+  attribute :expires_at, if: :locally_owned?
 
   belongs_to :reblog, serializer: REST::StatusSerializer
   belongs_to :application, if: :show_application?
@@ -23,11 +35,13 @@ class REST::StatusSerializer < ActiveModel::Serializer
 
   has_many :media_attachments, serializer: REST::MediaAttachmentSerializer
   has_many :ordered_mentions, key: :mentions
-  has_many :tags
+  has_many :ordered_tags, key: :tags
   has_many :emojis, serializer: REST::CustomEmojiSerializer
 
   has_one :preview_card, key: :card, serializer: REST::PreviewCardSerializer
   has_one :preloadable_poll, key: :poll, serializer: REST::PollSerializer
+
+  has_many :domain_permissions, serializer: REST::StatusDomainPermissionSerializer, if: :locally_owned?
 
   def id
     object.id.to_s
@@ -45,8 +59,22 @@ class REST::StatusSerializer < ActiveModel::Serializer
     !current_user.nil?
   end
 
+  def owned?
+    current_user? && current_user.account_id == object.account_id
+  end
+
+  def locally_owned?
+    object.local? && owned?
+  end
+
+  def title?
+    return @has_title if defined?(@has_title)
+
+    @has_title = object.title.present?
+  end
+
   def show_application?
-    object.account.user_shows_application? || (current_user? && current_user.account_id == object.account_id)
+    object.account.user_shows_application? || owned?
   end
 
   def visibility
@@ -64,12 +92,28 @@ class REST::StatusSerializer < ActiveModel::Serializer
     ActivityPub::TagManager.instance.uri_for(object)
   end
 
+  def spoiler_text
+    title? ? object.title : object.spoiler_text
+  end
+
   def content
     Formatter.instance.format(object)
   end
 
+  def article_content
+    Formatter.instance.format(object, article_content: true)
+  end
+
+  def text
+    object.original_text.presence || object.text
+  end
+
   def url
     ActivityPub::TagManager.instance.url_for(object)
+  end
+
+  def root
+    object.conversation&.root
   end
 
   def favourited
@@ -93,6 +137,22 @@ class REST::StatusSerializer < ActiveModel::Serializer
       instance_options[:relationships].mutes_map[object.conversation_id] || false
     else
       current_user.account.muting_conversation?(object.conversation)
+    end
+  end
+
+  def conversation_hidden
+    if instance_options && instance_options[:relationships]
+      instance_options[:relationships].hidden_conversations_map[object.conversation_id] || false
+    else
+      current_user.account.hiding_conversation?(object.conversation)
+    end
+  end
+
+  def hidden
+    if instance_options && instance_options[:relationships]
+      instance_options[:relationships].hidden_statuses_map[object.id] || false
+    else
+      current_user.account.muting_status?(object)
     end
   end
 
@@ -125,6 +185,10 @@ class REST::StatusSerializer < ActiveModel::Serializer
 
   def ordered_mentions
     object.active_mentions.to_a.sort_by(&:id)
+  end
+
+  def ordered_tags
+    object.tags.order('name')
   end
 
   class ApplicationSerializer < ActiveModel::Serializer

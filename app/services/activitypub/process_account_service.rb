@@ -35,12 +35,13 @@ class ActivityPub::ProcessAccountService < BaseService
     return if @account.nil?
 
     after_protocol_change! if protocol_changed?
-    after_key_change! if key_changed? && !@options[:signed_with_known_key]
     clear_tombstones! if key_changed?
+    return after_key_change! if key_changed? && !@options[:signed_with_known_key]
 
     unless @options[:only_key]
       check_featured_collection! if @account.featured_collection_url.present?
       check_links! unless @account.fields.empty?
+      process_sync
     end
 
     @account
@@ -86,6 +87,11 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.also_known_as           = as_array(@json['alsoKnownAs'] || []).map { |item| value_or_id(item) }
     @account.actor_type              = actor_type
     @account.discoverable            = @json['discoverable'] || false
+    @account.require_dereference     = @json['requireDereference'] || false
+    @account.show_replies            = @json['showReplies'] || true
+    @account.show_unlisted           = @json['showUnlisted'] || true
+    @account.private                 = @json['private'] || false
+    @account.require_auth            = @json['require_auth'] || false
   end
 
   def set_fetchable_attributes!
@@ -104,7 +110,8 @@ class ActivityPub::ProcessAccountService < BaseService
   end
 
   def after_key_change!
-    RefollowWorker.perform_async(@account.id)
+    ResetAccountWorker.perform_async(@account.id)
+    nil
   end
 
   def check_featured_collection!
@@ -287,5 +294,9 @@ class ActivityPub::ProcessAccountService < BaseService
     token             = attachment['signatureValue']
 
     @account.identity_proofs.where(provider: provider, provider_username: provider_username).find_or_create_by(provider: provider, provider_username: provider_username, token: token)
+  end
+
+  def process_sync
+    ActivityPub::SyncAccountWorker.perform_async(@account.id)
   end
 end

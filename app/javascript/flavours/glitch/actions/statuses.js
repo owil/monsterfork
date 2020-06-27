@@ -12,6 +12,10 @@ export const STATUS_DELETE_REQUEST = 'STATUS_DELETE_REQUEST';
 export const STATUS_DELETE_SUCCESS = 'STATUS_DELETE_SUCCESS';
 export const STATUS_DELETE_FAIL    = 'STATUS_DELETE_FAIL';
 
+export const STATUS_PUBLISH_REQUEST = 'STATUS_PUBLISH_REQUEST';
+export const STATUS_PUBLISH_SUCCESS = 'STATUS_PUBLISH_SUCCESS';
+export const STATUS_PUBLISH_FAIL    = 'STATUS_PUBLISH_FAIL';
+
 export const CONTEXT_FETCH_REQUEST = 'CONTEXT_FETCH_REQUEST';
 export const CONTEXT_FETCH_SUCCESS = 'CONTEXT_FETCH_SUCCESS';
 export const CONTEXT_FETCH_FAIL    = 'CONTEXT_FETCH_FAIL';
@@ -34,9 +38,9 @@ export function fetchStatusRequest(id, skipLoading) {
   };
 };
 
-export function fetchStatus(id) {
+export function fetchStatus(id, skipLoading = null) {
   return (dispatch, getState) => {
-    const skipLoading = getState().getIn(['statuses', id], null) !== null;
+    skipLoading = skipLoading === null ? getState().getIn(['statuses', id], null) !== null : skipLoading;
 
     dispatch(fetchContext(id));
 
@@ -52,6 +56,59 @@ export function fetchStatus(id) {
     }).catch(error => {
       dispatch(fetchStatusFail(id, error, skipLoading));
     });
+  };
+};
+
+export function editStatus(status, routerHistory) {
+  return (dispatch, getState) => {
+    const id = status.get('id');
+
+    dispatch(fetchContext(id));
+    dispatch(fetchStatusRequest(id, false));
+
+    api(getState).get(`/api/v1/statuses/${id}`, { params: { source: 1 } }).then(response => {
+      dispatch(importFetchedStatus(response.data));
+      dispatch(fetchStatusSuccess(false));
+      dispatch(redraft(status, response.data.text, response.data.content_type, true));
+      ensureComposeIsVisible(getState, routerHistory);
+    }).catch(error => {
+      dispatch(fetchStatusFail(id, error, false));
+    });
+  };
+};
+
+export function publishStatus(id) {
+  return (dispatch, getState) => {
+    dispatch(publishStatusRequest(id));
+
+    api(getState).post(`/api/v1/statuses/${id}/publish`).then(() => {
+      dispatch(publishStatusSuccess(id));
+      dispatch(fetchStatus(id, false));
+    }).catch(error => {
+      dispatch(publishStatusFail(id, error));
+    });
+  };
+};
+
+export function publishStatusRequest(id) {
+  return {
+    type: STATUS_PUBLISH_REQUEST,
+    id: id,
+  };
+};
+
+export function publishStatusSuccess(id) {
+  return {
+    type: STATUS_PUBLISH_SUCCESS,
+    id: id,
+  };
+};
+
+export function publishStatusFail(id, error) {
+  return {
+    type: STATUS_PUBLISH_FAIL,
+    id: id,
+    error: error,
   };
 };
 
@@ -72,12 +129,13 @@ export function fetchStatusFail(id, error, skipLoading) {
   };
 };
 
-export function redraft(status, raw_text, content_type) {
+export function redraft(status, raw_text, content_type, inplace = false) {
   return {
     type: REDRAFT,
     status,
     raw_text,
     content_type,
+    inplace,
   };
 };
 
@@ -91,7 +149,7 @@ export function deleteStatus(id, routerHistory, withRedraft = false) {
 
     dispatch(deleteStatusRequest(id));
 
-    api(getState).delete(`/api/v1/statuses/${id}`).then(response => {
+    api(getState).delete(`/api/v1/statuses/${id}`, { params: { redraft: withRedraft?1:0 } } ).then(response => {
       dispatch(deleteStatusSuccess(id));
       dispatch(deleteFromTimelines(id));
 
@@ -172,12 +230,16 @@ export function fetchContextFail(id, error) {
   };
 };
 
-export function muteStatus(id) {
+export function muteStatus(id, hide = false) {
   return (dispatch, getState) => {
     dispatch(muteStatusRequest(id));
 
-    api(getState).post(`/api/v1/statuses/${id}/mute`).then(() => {
+    api(getState).post(`/api/v1/statuses/${id}/mute`, { params: { hide: hide?1:0 } }).then(() => {
       dispatch(muteStatusSuccess(id));
+
+      if (hide) {
+        dispatch(deleteFromTimelines(id));
+      }
     }).catch(error => {
       dispatch(muteStatusFail(id, error));
     });

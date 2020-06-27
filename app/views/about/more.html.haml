@@ -42,12 +42,17 @@
   .column-3
     = render 'application/flashes'
 
-    - if @contents.blank? && (!display_blocks? || @blocks&.empty?)
+    - if @contents.blank? && ((!display_allows? || @allows&.empty?) && (!display_blocks? || @blocks&.empty?))
       = nothing_here
     - else
       .box-widget
         .rich-formatting
           = @contents.html_safe
+
+          - if display_allows? && !@allows.empty?
+            %h2#available-content= t('about.available_content')
+            %p= t('about.available_content_html')
+            = render partial: 'domain_allows', locals: { domain_allows: @allows }
 
           - if display_blocks? && !@blocks.empty?
             %h2#unavailable-content= t('about.unavailable_content')
@@ -77,6 +82,9 @@
             %ul
               - item.children.each do |sub_item|
                 %li= link_to sub_item.title, "##{sub_item.anchor}"
+
+      - if display_allows? && !@allows.empty?
+        %li= link_to t('about.available_content'), '#available-content'
 
       - if display_blocks? && !@blocks.empty?
         %li= link_to t('about.unavailable_content'), '#unavailable-content'

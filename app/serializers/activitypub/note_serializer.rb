@@ -3,16 +3,25 @@
 class ActivityPub::NoteSerializer < ActivityPub::Serializer
   context_extensions :atom_uri, :conversation, :sensitive, :voters_count, :direct_message
 
+  context_extensions :edited, :server_metadata, :root, :reblog, :expires
+
   attributes :id, :type, :summary,
              :in_reply_to, :published, :url,
              :attributed_to, :to, :cc, :sensitive,
              :atom_uri, :in_reply_to_atom_uri,
              :conversation
 
+  attributes :updated, :root
+  attribute :title, key: :name, if: :title_present?
+  attribute :reblog, if: :reblog_present?
+  attribute :renote, key: '_misskey_quote', if: :reblog_present?
+  attribute :expires_at, key: :expires, if: :expires_at_present?
+
   attribute :content
   attribute :content_map, if: :language?
 
   attribute :direct_message, if: :non_public?
+  attribute :server_metadata
 
   has_many :media_attachments, key: :attachment
   has_many :virtual_tags, key: :tag
@@ -29,14 +38,28 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
 
   def id
     raise Mastodon::NotPermittedError, 'Local-only statuses should not be serialized' if object.local_only? && !instance_options[:allow_local_only]
+    raise Mastodon::NotPermittedError, 'Unpublished statuses should not be serialized' unless object.published? || instance_options[:allow_local_only]
+
     ActivityPub::TagManager.instance.uri_for(object)
   end
 
   def type
-    object.preloadable_poll ? 'Question' : 'Note'
+    if object.preloadable_poll
+      'Question'
+    elsif title_present?
+      'Article'
+    else
+      'Note'
+    end
+  end
+
+  def root
+    object.conversation&.root
   end
 
   def summary
+    return Formatter.instance.format(object, plaintext: true) || Setting.outgoing_spoilers.presence if title_present?
+
     object.spoiler_text.presence || (instance_options[:allow_local_only] ? nil : Setting.outgoing_spoilers.presence)
   end
 
@@ -53,11 +76,11 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
   end
 
   def content
-    Formatter.instance.format(object)
+    Formatter.instance.format(object, article_content: true)
   end
 
   def content_map
-    { object.language => Formatter.instance.format(object) }
+    { object.language => Formatter.instance.format(object, article_content: true) }
   end
 
   def replies
@@ -94,6 +117,10 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
     object.created_at.iso8601
   end
 
+  def updated
+    object.updated_at.iso8601
+  end
+
   def url
     ActivityPub::TagManager.instance.url_for(object)
   end
@@ -103,11 +130,11 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
   end
 
   def to
-    ActivityPub::TagManager.instance.to(object)
+    ActivityPub::TagManager.instance.to(object, target_domain: instance_options[:target_domain])
   end
 
   def cc
-    ActivityPub::TagManager.instance.cc(object)
+    ActivityPub::TagManager.instance.cc(object, target_domain: instance_options[:target_domain])
   end
 
   def virtual_tags
@@ -172,6 +199,32 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
 
   def poll_and_voters_count?
     object.preloadable_poll&.voters_count
+  end
+
+  def title_present?
+    return @has_title if defined?(@has_title)
+
+    @has_title = object.title.present?
+  end
+
+  def server_metadata
+    Mastodon::Version.server_metadata_json
+  end
+
+  def reblog
+    ActivityPub::TagManager.instance.uri_for(object.reblog)
+  end
+
+  def renote
+    ActivityPub::TagManager.instance.uri_for(object.reblog)
+  end
+
+  def reblog_present?
+    object.reblog_of_id.present?
+  end
+
+  def expires_at_present?
+    object.expires_at.present?
   end
 
   class MediaAttachmentSerializer < ActivityPub::Serializer

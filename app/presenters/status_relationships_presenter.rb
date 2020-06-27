@@ -4,6 +4,8 @@ class StatusRelationshipsPresenter
   attr_reader :reblogs_map, :favourites_map, :mutes_map, :pins_map,
               :bookmarks_map
 
+  attr_reader :hidden_conversations_map, :hidden_statuses_map
+
   def initialize(statuses, current_account_id = nil, **options)
     if current_account_id.nil?
       @reblogs_map    = {}
@@ -11,6 +13,9 @@ class StatusRelationshipsPresenter
       @bookmarks_map  = {}
       @mutes_map      = {}
       @pins_map       = {}
+
+      @hidden_conversations_map = {}
+      @hidden_statuses_map      = {}
     else
       statuses            = statuses.compact
       status_ids          = statuses.flat_map { |s| [s.id, s.reblog_of_id] }.uniq.compact
@@ -22,6 +27,9 @@ class StatusRelationshipsPresenter
       @bookmarks_map   = Status.bookmarks_map(status_ids, current_account_id).merge(options[:bookmarks_map] || {})
       @mutes_map       = Status.mutes_map(conversation_ids, current_account_id).merge(options[:mutes_map] || {})
       @pins_map        = Status.pins_map(pinnable_status_ids, current_account_id).merge(options[:pins_map] || {})
+
+      @hidden_conversations_map = Status.hidden_conversations_map(conversation_ids, current_account_id).merge(options[:hidden_conversations_map] || {})
+      @hidden_statuses_map      = Status.hidden_statuses_map(status_ids, current_account_id).merge(options[:hidden_statuses_map] || {})
     end
   end
 end

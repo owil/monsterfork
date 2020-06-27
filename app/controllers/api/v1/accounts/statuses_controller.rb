@@ -8,7 +8,7 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
 
   def index
     @statuses = load_statuses
-    render json: @statuses, each_serializer: REST::StatusSerializer, relationships: StatusRelationshipsPresenter.new(@statuses, current_user&.account_id)
+    render json: @statuses, each_serializer: REST::StatusSerializer, relationships: StatusRelationshipsPresenter.new(@statuses, current_account&.id)
   end
 
   private
@@ -17,17 +17,17 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
     @account = Account.find(params[:account_id])
   end
 
+  def owner?
+    @account.id == current_account&.id
+  end
+
   def load_statuses
     cached_account_statuses
   end
 
   def cached_account_statuses
     statuses = truthy_param?(:pinned) ? pinned_scope : permitted_account_statuses
-
     statuses.merge!(only_media_scope) if truthy_param?(:only_media)
-    statuses.merge!(no_replies_scope) if truthy_param?(:exclude_replies)
-    statuses.merge!(no_reblogs_scope) if truthy_param?(:exclude_reblogs)
-    statuses.merge!(hashtag_scope)    if params[:tagged].present?
 
     cache_collection_paginated_by_id(
       statuses,
@@ -38,11 +38,54 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
   end
 
   def permitted_account_statuses
-    @account.statuses.permitted_for(@account, current_account)
+    return mentions_scope if truthy_param?(:mentions)
+    return Status.none if unauthorized?
+
+    @account.statuses.permitted_for(
+      @account,
+      current_account,
+      include_semiprivate: true,
+      include_reblogs: include_reblogs?,
+      include_replies: include_replies?,
+      only_reblogs: only_reblogs?,
+      only_replies: only_replies?,
+      include_unpublished: owner?,
+      tag: params[:tagged]
+    )
   end
 
   def only_media_scope
     Status.joins(:media_attachments).merge(@account.media_attachments.reorder(nil)).group(:id)
+  end
+
+  def unauthorized?
+    (@account.private && !following?(@account)) || (@account.require_auth && !current_account?)
+  end
+
+  def include_reblogs?
+    params[:include_reblogs].present? ? truthy_param?(:include_reblogs) : !truthy_param?(:exclude_reblogs)
+  end
+
+  def include_replies?
+    return false unless owner? || @account.show_replies?
+
+    params[:include_replies].present? ? truthy_param?(:include_replies) : !truthy_param?(:exclude_replies)
+  end
+
+  def only_reblogs?
+    truthy_param?(:only_reblogs).presence || false
+  end
+
+  def only_replies?
+    return false unless owner? || @account.show_replies?
+
+    truthy_param?(:only_replies).presence || false
+  end
+
+  def mentions_scope
+    return Status.none unless current_account?
+
+    Status.mentions_between(@account, current_account)
   end
 
   def pinned_scope
@@ -51,26 +94,10 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
     @account.pinned_statuses
   end
 
-  def no_replies_scope
-    Status.without_replies
-  end
-
-  def no_reblogs_scope
-    Status.without_reblogs
-  end
-
-  def hashtag_scope
-    tag = Tag.find_normalized(params[:tagged])
-
-    if tag
-      Status.tagged_with(tag.id)
-    else
-      Status.none
-    end
-  end
-
   def pagination_params(core_params)
-    params.slice(:limit, :only_media, :exclude_replies).permit(:limit, :only_media, :exclude_replies).merge(core_params)
+    params.slice(:limit, :only_media, :include_replies, :exclude_replies, :only_replies, :include_reblogs, :exclude_reblogs, :only_relogs, :mentions)
+          .permit(:limit, :only_media, :include_replies, :exclude_replies, :only_replies, :include_reblogs, :exclude_reblogs, :only_relogs, :mentions)
+          .merge(core_params)
   end
 
   def insert_pagination_headers
@@ -78,15 +105,11 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
   end
 
   def next_path
-    if records_continue?
-      api_v1_account_statuses_url pagination_params(max_id: pagination_max_id)
-    end
+    api_v1_account_statuses_url pagination_params(max_id: pagination_max_id) if records_continue?
   end
 
   def prev_path
-    unless @statuses.empty?
-      api_v1_account_statuses_url pagination_params(min_id: pagination_since_id)
-    end
+    api_v1_account_statuses_url pagination_params(min_id: pagination_since_id) unless @statuses.empty?
   end
 
   def records_continue?

@@ -71,10 +71,12 @@ class ComposeForm extends ImmutablePureComponent {
     onChangeVisibility: PropTypes.func,
     onPaste: PropTypes.func,
     onMediaDescriptionConfirm: PropTypes.func,
+    clearTimeout: PropTypes.bool,
   };
 
   static defaultProps = {
     showSearch: false,
+    clearTimeout: null,
   };
 
   handleChange = (e) => {
@@ -147,6 +149,17 @@ class ComposeForm extends ImmutablePureComponent {
       sideArm,
     } = this.props;
     this.handleSubmit(sideArm === 'none' ? null : sideArm);
+  }
+
+  handleClearAll = () => {
+    if(!this.clearTimeout || this.clearTimeout === null) {
+      this.clearTimeout = window.setTimeout(() => {
+        this.clearTimeout = null;
+      }, 500);
+    } else {
+      this.clearTimeout = null;
+      this.props.onClearAll();
+    }
   }
 
   //  Selects a suggestion from the autofill.
@@ -256,6 +269,7 @@ class ComposeForm extends ImmutablePureComponent {
       handleSecondarySubmit,
       handleSelect,
       handleSubmit,
+      handleClearAll,
       handleRefTextarea,
     } = this;
     const {
@@ -281,6 +295,7 @@ class ComposeForm extends ImmutablePureComponent {
       suggestions,
       text,
       spoilersAlwaysOn,
+      clearTimeout,
     } = this.props;
 
     let disabledButton = isSubmitting || isUploading || isChangingUpload || (!text.trim().length && !anyMedia);
@@ -356,6 +371,7 @@ class ComposeForm extends ImmutablePureComponent {
           disabled={disabledButton}
           onSecondarySubmit={handleSecondarySubmit}
           onSubmit={handleSubmit}
+          onClearAll={handleClearAll}
           privacy={privacy}
           sideArm={sideArm}
         />

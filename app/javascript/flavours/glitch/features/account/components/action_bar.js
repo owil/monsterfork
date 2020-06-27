@@ -31,14 +31,20 @@ class ActionBar extends React.PureComponent {
     if (account.get('acct') !== account.get('username')) {
       extraInfo = (
         <div className='account__disclaimer'>
-          <Icon id='info-circle' fixedWidth /> <FormattedMessage
-            id='account.disclaimer_full'
-            defaultMessage="Information below may reflect the user's profile incompletely."
-          />
-          {' '}
-          <a target='_blank' rel='noopener' href={account.get('url')}>
-            <FormattedMessage id='account.view_full_profile' defaultMessage='View full profile' />
-          </a>
+          <p>
+            <Icon id='info-circle' fixedWidth /> <FormattedMessage
+              id='account.disclaimer_full'
+              defaultMessage="Information below may reflect the user's profile incompletely."
+            />
+          </p>
+          <p>
+            <Icon id='link' fixedWidth /> <a target='_blank' rel='noopener' href={account.get('url')}>
+              <FormattedMessage
+                id='account.view_full_profile'
+                defaultMessage='View full profile'
+              />
+            </a>
+          </p>
         </div>
       );
     }
@@ -51,17 +57,14 @@ class ActionBar extends React.PureComponent {
           <div className='account__action-bar-links'>
             <NavLink isActive={this.isStatusesPageActive} activeClassName='active' className='account__action-bar__tab' to={`/accounts/${account.get('id')}`}>
               <FormattedMessage id='account.posts' defaultMessage='Posts' />
-              <strong><FormattedNumber value={account.get('statuses_count')} /></strong>
             </NavLink>
 
             <NavLink exact activeClassName='active' className='account__action-bar__tab' to={`/accounts/${account.get('id')}/following`}>
               <FormattedMessage id='account.follows' defaultMessage='Follows' />
-              <strong><FormattedNumber value={account.get('following_count')} /></strong>
             </NavLink>
 
             <NavLink exact activeClassName='active' className='account__action-bar__tab' to={`/accounts/${account.get('id')}/followers`}>
               <FormattedMessage id='account.followers' defaultMessage='Followers' />
-              <strong>{ account.get('followers_count') < 0 ? '-' : <FormattedNumber value={account.get('followers_count')} /> }</strong>
             </NavLink>
           </div>
         </div>

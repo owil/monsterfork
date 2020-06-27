@@ -2,6 +2,7 @@
 
 class PostStatusService < BaseService
   include Redisable
+  include ImgProxyHelper
 
   MIN_SCHEDULE_OFFSET = 5.minutes.freeze
 
@@ -13,6 +14,8 @@ class PostStatusService < BaseService
   # @option [Boolean] :sensitive
   # @option [String] :visibility
   # @option [String] :spoiler_text
+  # @option [String] :title
+  # @option [String] :footer
   # @option [String] :language
   # @option [String] :scheduled_at
   # @option [Hash] :poll Optional poll to attach
@@ -20,12 +23,31 @@ class PostStatusService < BaseService
   # @option [Doorkeeper::Application] :application
   # @option [String] :idempotency Optional idempotency key
   # @option [Boolean] :with_rate_limit
+  # @option [Status] :status Edit an existing status
+  # @option [Enumerable] :mentions Optional array of Mentions to include
+  # @option [Enumerable] :tags Option array of tag names to include
+  # @option [Boolean] :publish If true, status will be published
+  # @option [Boolean] :notify If false, status will not be delivered to local timelines or mentions
+  # @option [String] :expires_at If set, automatically delete at this time (UTC)
+  # @option [String] :publish_at If set, automatically publish at this time (UTC)
   # @return [Status]
   def call(account, options = {})
     @account     = account
     @options     = options
     @text        = @options[:text] || ''
     @in_reply_to = @options[:thread]
+    @expires_at  = @options[:expires_at]&.to_datetime
+    @publish_at  = @options[:publish_at]&.to_datetime
+
+    @expires_at ||= Time.now.utc + @account.user&.setting_unpublish_in.to_i.minutes if @account.user&.setting_unpublish_in.to_i.positive?
+    @publish_at ||= Time.now.utc + @account.user&.setting_publish_in.to_i.minutes if @account.user&.setting_publish_in.to_i.positive?
+
+    @options[:publish] ||= !(account.user&.setting_manual_publish || @publish_at.present?)
+
+    raise Mastodon::NotPermittedError if different_author?
+
+    @tag_names   = (@options[:tags] || []).select { |tag| tag =~ /\A(#{Tag::HASHTAG_NAME_RE})\z/i }
+    @mentions    = @options[:mentions] || []
 
     return idempotency_duplicate if idempotency_given? && idempotency_duplicate?
 
@@ -34,10 +56,12 @@ class PostStatusService < BaseService
 
     if scheduled?
       schedule_status!
+    elsif @options[:status].present? && status_exists?
+      update_status!
     else
       process_status!
       postprocess_status!
-      bump_potential_friendship!
+      bump_potential_friendship! if @options[:publish]
     end
 
     redis.setex(idempotency_key, 3_600, @status.id) if idempotency_given?
@@ -49,14 +73,14 @@ class PostStatusService < BaseService
 
   def preprocess_attributes!
     if @text.blank? && @options[:spoiler_text].present?
-     @text = '.'
-     if @media&.find(&:video?) || @media&.find(&:gifv?)
-       @text = '📹'
-     elsif @media&.find(&:audio?)
-       @text = '🎵'
-     elsif @media&.find(&:image?)
-       @text = '🖼'
-     end
+      @text = '.'
+      if @media&.find(&:video?) || @media&.find(&:gifv?)
+        @text = '📹'
+      elsif @media&.find(&:audio?)
+        @text = '🎵'
+      elsif @media&.find(&:image?)
+        @text = '🖼'
+      end
     end
     @sensitive    = (@options[:sensitive].nil? ? @account.user&.setting_default_sensitive : @options[:sensitive]) || @options[:spoiler_text].present?
     @visibility   = @options[:visibility] || @account.user&.setting_default_privacy
@@ -75,8 +99,11 @@ class PostStatusService < BaseService
       @status = @account.statuses.create!(status_attributes)
     end
 
-    process_hashtags_service.call(@status)
-    process_mentions_service.call(@status)
+    @status.notify = @options[:notify] if @options[:notify].present?
+
+    process_command_tags_service.call(@account, @status)
+    process_hashtags_service.call(@status, nil, @tag_names)
+    process_mentions_service.call(@status, mentions: @mentions, deliver: @options[:publish])
   end
 
   def schedule_status!
@@ -99,8 +126,16 @@ class PostStatusService < BaseService
   def postprocess_status!
     LinkCrawlWorker.perform_async(@status.id) unless @status.spoiler_text?
     DistributionWorker.perform_async(@status.id)
+
+    return unless @options[:publish]
+
     ActivityPub::DistributionWorker.perform_async(@status.id) unless @status.local_only?
     PollExpirationNotifyWorker.perform_at(@status.poll.expires_at, @status.poll.id) if @status.poll
+  end
+
+  def update_status!
+    tags = Tag.find_or_create_by_names(@tag_names)
+    @status = UpdateStatusService.new.call(@options[:status], status_attributes, @mentions, tags)
   end
 
   def validate_media!
@@ -108,7 +143,8 @@ class PostStatusService < BaseService
 
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.too_many') if @options[:media_ids].size > 4 || @options[:poll].present?
 
-    @media = @account.media_attachments.where(status_id: nil).where(id: @options[:media_ids].take(4).map(&:to_i))
+    @media = @options[:status].present? ? @account.media_attachments.where(status_id: [nil, @options[:status].id]) : @account.media_attachments.where(status_id: nil)
+    @media = @media.where(id: @options[:media_ids].take(4).map(&:to_i))
 
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.images_and_video') if @media.size > 1 && @media.find(&:audio_or_video?)
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.not_ready') if @media.any?(&:not_processed?)
@@ -124,6 +160,10 @@ class PostStatusService < BaseService
 
   def process_hashtags_service
     ProcessHashtagsService.new
+  end
+
+  def process_command_tags_service
+    ProcessCommandTagsService.new
   end
 
   def scheduled?
@@ -156,24 +196,32 @@ class PostStatusService < BaseService
 
   def bump_potential_friendship!
     return if !@status.reply? || @account.id == @status.in_reply_to_account_id
+
     ActivityTracker.increment('activity:interactions')
     return if @account.following?(@status.in_reply_to_account_id)
+
     PotentialFriendshipTracker.record(@account.id, @status.in_reply_to_account_id, :reply)
   end
 
   def status_attributes
     {
       text: @text,
+      original_text: @text,
       media_attachments: @media || [],
       thread: @in_reply_to,
       poll_attributes: poll_attributes,
       sensitive: @sensitive,
       spoiler_text: @options[:spoiler_text] || '',
+      title: @options[:title],
+      footer: @options[:footer],
       visibility: @visibility,
       language: language_from_option(@options[:language]) || @account.user&.setting_default_language&.presence || LanguageDetector.instance.detect(@text, @account),
       application: @options[:application],
+      published: @options[:publish],
       content_type: @options[:content_type] || @account.user&.setting_default_content_type,
       rate_limit: @options[:with_rate_limit],
+      expires_at: @expires_at,
+      publish_at: @publish_at,
     }.compact
   end
 
@@ -198,6 +246,16 @@ class PostStatusService < BaseService
       options_hash[:scheduled_at]    = nil
       options_hash[:idempotency]     = nil
       options_hash[:with_rate_limit] = false
+      options_hash[:mention_ids]     = options_hash.delete(:mentions)&.pluck(:id)
+      options_hash[:status_id]       = options_hash.delete(:status)&.id
     end
+  end
+
+  def different_author?
+    @options[:status].present? && @options[:status].account_id != @account.id
+  end
+
+  def status_exists?
+    !(@options[:status].discarded? || @options[:status].destroyed?)
   end
 end

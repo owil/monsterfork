@@ -24,6 +24,7 @@ class HTMLRenderer < Redcarpet::Render::HTML
   end
 end
 
+# rubocop:disable Metrics/ClassLength
 class Formatter
   include Singleton
   include RoutingHelper
@@ -31,48 +32,93 @@ class Formatter
   include ActionView::Helpers::TextHelper
 
   def format(status, **options)
-    if status.reblog?
-      prepend_reblog = status.reblog.account.acct
-      status         = status.proper
-    else
-      prepend_reblog = false
+    Rails.cache.fetch(formatter_cache_key(status, options), expires_in: 1.hour) do
+      uncached_format(status, options)
     end
+  end
 
-    raw_content = status.text
+  def uncached_format(status, options)
+    summary = nil
+    raw_content = status.proper.text
+    summary_mode = false
+
+    if status.title.present?
+      summary = status.spoiler_text.presence || status.text
+      summary_mode = !options[:article_content]
+      raw_content = summary_mode ? summary : status.text
+    end
 
     if options[:inline_poll_options] && status.preloadable_poll
       raw_content = raw_content + "\n\n" + status.preloadable_poll.options.map { |title| "[ ] #{title}" }.join("\n")
     end
 
     return '' if raw_content.blank?
+    return format_remote_content(raw_content, status.emojis, summary: summary, **options) unless status.local?
 
-    unless status.local?
-      html = reformat(raw_content)
-      html = encode_custom_emojis(html, status.emojis, options[:autoplay]) if options[:custom_emojify]
-      return html.html_safe # rubocop:disable Rails/OutputSafety
+    if status.reblog?
+      html = "🔁 @#{status.reblog.account.acct}\n🔗 #{ActivityPub::TagManager.instance.url_for(status.reblog)}"
+      html += "\nℹ️ #{status.reblog.spoiler_text}" if status.reblog.spoiler_text.present?
+    else
+      html = raw_content
     end
 
-    linkable_accounts = status.active_mentions.map(&:account)
+    html = "📄 #{html}" if summary_mode
+    return html if options[:plaintext]
+
+    linkable_accounts = status.mentions.map(&:account)
     linkable_accounts << status.account
 
-    html = raw_content
-    html = "RT @#{prepend_reblog} #{html}" if prepend_reblog
-    html = format_markdown(html) if status.content_type == 'text/markdown'
-    html = encode_and_link_urls(html, linkable_accounts, keep_html: %w(text/markdown text/html).include?(status.content_type))
-    html = reformat(html, true) if %w(text/markdown text/html).include?(status.content_type)
+    keep_html = !summary_mode && %w(text/markdown text/html).include?(status.content_type)
+
+    html = format_markdown(html) if !summary_mode && status.content_type == 'text/markdown'
+    html = encode_and_link_urls(html, linkable_accounts, keep_html: keep_html)
+    html = reformat(html, true) if keep_html
     html = encode_custom_emojis(html, status.emojis, options[:autoplay]) if options[:custom_emojify]
 
-    unless %w(text/markdown text/html).include?(status.content_type)
+    unless keep_html
       html = simple_format(html, {}, sanitize: false)
-      html = html.delete("\n")
+      html.delete!("\n")
     end
 
+    html = summary_mode ? format_article_summary(html, status) : format_article_content(summary, html) if summary.present?
+    html = format_footer(html, status.footer, linkable_accounts, status.emojis, **options) if status.footer.present?
     html.html_safe # rubocop:disable Rails/OutputSafety
+  end
+
+  def format_remote_content(html, emojis, **options)
+    html = reformat(html, options[:outgoing])
+    html = encode_custom_emojis(html, emojis, options[:autoplay]) if options[:custom_emojify]
+    html = format_article_content(options[:summary], html) if options[:article_content] && options[:summary].present?
+    html.html_safe # rubocop:disable Rails/OutputSafety
+  end
+
+  def format_footer(html, footer, linkable_accounts, emojis, **options)
+    footer = encode_and_link_urls(footer, linkable_accounts)
+    footer = encode_custom_emojis(footer, emojis, options[:autoplay]) if options[:custom_emojify]
+    footer = "<span class=\"invisible\">– </span>#{footer}"
+    footer = simple_format(footer, { 'data-name': 'footer' }, sanitize: false)
+    footer.delete!("\n")
+
+    "#{html}#{footer}"
   end
 
   def format_markdown(html)
     html = markdown_formatter.render(html)
     html.delete("\r").delete("\n")
+  end
+
+  def format_article(text)
+    text = text.gsub(/>[\r\n]+</, '><')
+    text.html_safe # rubocop:disable Rails/OutputSafety
+  end
+
+  def format_article_summary(html, status)
+    status_url = ActivityPub::TagManager.instance.url_for(status)
+    "#{html}\n<p data-name=\"permalink\">#{link_url(status_url)}</p>"
+  end
+
+  def format_article_content(summary, html)
+    "<blockquote data-name=\"summary\">#{format_summary(summary, html)}</blockquote>#{html}"
   end
 
   def reformat(html, outgoing = false)
@@ -89,7 +135,11 @@ class Formatter
   end
 
   def simplified_format(account, **options)
-    html = account.local? ? linkify(account.note) : reformat(account.note)
+    return reformat(account.note) unless account.local?
+
+    html = format_markdown(account.note)
+    html = encode_and_link_urls(html, keep_html: true)
+    html = reformat(html, true)
     html = encode_custom_emojis(html, account.emojis, options[:autoplay]) if options[:custom_emojify]
     html.html_safe # rubocop:disable Rails/OutputSafety
   end
@@ -98,8 +148,12 @@ class Formatter
     Sanitize.fragment(html, config)
   end
 
+  def format_summary(summary, fallback)
+    summary&.strip.presence || fallback[/(?:<p>.*?<\/p>)/im].presence || '🗎❓'
+  end
+
   def format_spoiler(status, **options)
-    html = encode(status.spoiler_text)
+    html = encode(status.title.presence || status.spoiler_text)
     html = encode_custom_emojis(html, status.emojis, options[:autoplay])
     html.html_safe # rubocop:disable Rails/OutputSafety
   end
@@ -122,8 +176,8 @@ class Formatter
     html.html_safe # rubocop:disable Rails/OutputSafety
   end
 
-  def linkify(text)
-    html = encode_and_link_urls(text)
+  def linkify(text, accounts = nil, options = {})
+    html = encode_and_link_urls(text, accounts, options)
     html = simple_format(html, {}, sanitize: false)
     html = html.delete("\n")
 
@@ -154,7 +208,7 @@ class Formatter
     renderer = HTMLRenderer.new({
       filter_html: false,
       escape_html: false,
-      no_images: true,
+      no_images: false,
       no_styles: true,
       safe_links_only: true,
       hard_wrap: true,
@@ -390,4 +444,17 @@ class Formatter
   def mention_html(account)
     "<span class=\"h-card\"><a href=\"#{encode(ActivityPub::TagManager.instance.url_for(account))}\" class=\"u-url mention\">@<span>#{encode(account.username)}</span></a></span>"
   end
+
+  def formatter_cache_key(status, options)
+    [
+      'format',
+      status.id.to_s,
+      options[:article_content]     ? '1' : '0',
+      options[:inline_poll_options] ? '1' : '0',
+      options[:plaintext]           ? '1' : '0',
+      options[:autoplay]            ? '1' : '0',
+      options[:custom_emojify]      ? '1' : '0',
+    ].join(':')
+  end
 end
+# rubocop:enable Metrics/ClassLength

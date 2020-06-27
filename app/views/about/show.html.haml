@@ -3,77 +3,116 @@
 
 - content_for :header_tags do
   %link{ rel: 'canonical', href: about_url }/
+  %script{ src: '/registration.js', type: 'text/javascript', crossorigin: 'anonymous' }/
   = render partial: 'shared/og'
 
-.landing
-  .landing__brand
-    = link_to root_url, class: 'brand' do
-      = svg_logo_full
-      %span.brand__tagline=t 'about.tagline'
+.grid-4
+  .column-0
+    .public-account-header.public-account-header--no-bar
+      .public-account-header__image
+        = image_tag @instance_presenter.hero&.file&.url || @instance_presenter.thumbnail&.file&.url || asset_pack_path('media/images/preview.jpg'), alt: @instance_presenter.site_title, class: 'parallax'
 
-  .landing__grid
-    .landing__grid__column.landing__grid__column-registration
+  .column-1
+    .landing-page__call-to-action{ dir: 'ltr' }
+      .row
+        .row__information-board
+          .information-board__section
+            %span= t 'about.user_count_before'
+            %strong= number_with_delimiter @instance_presenter.user_count
+            %span= t 'about.user_count_after', count: @instance_presenter.user_count
+          .information-board__section
+            %span= t 'about.status_count_before'
+            %strong= number_with_delimiter @instance_presenter.status_count
+            %span= t 'about.status_count_after', count: @instance_presenter.status_count
+        .row__mascot
+          .landing-page__mascot
+            = image_tag @instance_presenter.mascot&.file&.url || asset_pack_path('media/images/elephant_ui_plane.svg'), alt: ''
+
+  .column-2
+    .contact-widget
+      %h4= t 'about.administered_by'
+
+      = account_link_to(@instance_presenter.contact_account)
+
+      - if @instance_presenter.site_contact_email.present?
+        %h4
+          = succeed ':' do
+            = t 'about.contact'
+
+        = mail_to @instance_presenter.site_contact_email, nil, title: @instance_presenter.site_contact_email
+
+  .column-3
+    = render 'application/flashes'
+
+    .box-widget
+      = render 'registration'
+
+    %br
+
+    - if @contents.blank? && ((!display_allows? || @allows&.empty?) && (!display_blocks? || @blocks&.empty?))
+      = nothing_here
+    - else
       .box-widget
-        = render 'registration'
+        .rich-formatting
+          = @contents.html_safe
 
-      .directory
-        - if Setting.profile_directory
-          .directory__tag
-            = optional_link_to Setting.profile_directory, explore_path do
-              %h4
-                = fa_icon 'address-book fw'
-                = t('about.discover_users')
-                %small= t('about.browse_directory')
+          - if display_allows? && !@allows.empty?
+            %h2#available-content= t('about.available_content')
+            %p= t('about.available_content_html')
+            = render partial: 'domain_allows', locals: { domain_allows: @allows }
 
-              .avatar-stack
-                - @instance_presenter.sample_accounts.each do |account|
-                  = image_tag current_account&.user&.setting_auto_play_gif ? account.avatar_original_url : account.avatar_static_url, alt: '', class: 'account__avatar'
+          - if display_blocks? && !@blocks.empty?
+            %h2#unavailable-content= t('about.unavailable_content')
 
-        - if Setting.timeline_preview
-          .directory__tag
-            = optional_link_to Setting.timeline_preview, public_timeline_path do
-              %h4
-                = fa_icon 'globe fw'
-                = t('about.see_whats_happening')
-                %small= t('about.browse_public_posts')
+            - if (blocks = @blocks.select(&:reject_media?)) && !blocks.empty?
+              %h3= t('about.unavailable_content_description.rejecting_media_title')
+              %p= t('about.unavailable_content_description.rejecting_media')
+              = render partial: 'domain_blocks', locals: { domain_blocks: blocks }
+            - if (blocks = @blocks.select(&:silence?)) && !blocks.empty?
+              %h3= t('about.unavailable_content_description.silenced_title')
+              %p= t('about.unavailable_content_description.silenced')
+              = render partial: 'domain_blocks', locals: { domain_blocks: blocks }
+            - if (blocks = @blocks.select(&:suspend?)) && !blocks.empty?
+              %h3= t('about.unavailable_content_description.suspended_title')
+              %p= t('about.unavailable_content_description.suspended')
+              = render partial: 'domain_blocks', locals: { domain_blocks: blocks }
 
+  .column-4
+    .box-widget
+      = render 'login'
+
+    %br
+
+    %ul.table-of-contents
+      - @table_of_contents.each do |item|
+        %li
+          = link_to item.title, "##{item.anchor}"
+
+          - unless item.children.empty?
+            %ul
+              - item.children.each do |sub_item|
+                %li= link_to sub_item.title, "##{sub_item.anchor}"
+
+      - if display_allows? && !@allows.empty?
+        %li= link_to t('about.available_content'), '#available-content'
+
+      - if display_blocks? && !@blocks.empty?
+        %li= link_to t('about.unavailable_content'), '#unavailable-content'
+
+    %br
+
+    .directory
+      - if Setting.profile_directory
         .directory__tag
-          = link_to 'https://joinmastodon.org/apps', target: '_blank', rel: 'noopener noreferrer' do
+          = optional_link_to Setting.profile_directory, explore_path do
             %h4
-              = fa_icon 'tablet fw'
-              = t('about.get_apps')
-              %small= t('about.apps_platforms')
+              = fa_icon 'address-book fw'
+              = t('about.discover_users')
 
-    .landing__grid__column.landing__grid__column-login
-      .box-widget
-        = render 'login'
+      .directory__tag
+        = link_to 'https://joinmastodon.org/apps', target: '_blank', rel: 'noopener noreferrer' do
+          %h4
+            = fa_icon 'tablet fw'
+            = t('about.get_apps')
 
-      .hero-widget
-        .hero-widget__img
-          = image_tag @instance_presenter.hero&.file&.url || @instance_presenter.thumbnail&.file&.url || asset_pack_path('media/images/preview.jpg'), alt: @instance_presenter.site_title
-
-        .hero-widget__text
-          %p
-            = @instance_presenter.site_short_description.html_safe.presence || t('about.about_mastodon_html')
-            = link_to about_more_path do
-              = t('about.learn_more')
-              = fa_icon 'angle-double-right'
-
-        .hero-widget__footer
-          .hero-widget__footer__column
-            %h4= t 'about.administered_by'
-
-            = account_link_to @instance_presenter.contact_account
-
-          .hero-widget__footer__column
-            %h4= t 'about.server_stats'
-
-            .hero-widget__counters__wrapper
-              .hero-widget__counter
-                %strong= number_to_human @instance_presenter.user_count, strip_insignificant_zeros: true
-                %span= t 'about.user_count_after', count: @instance_presenter.user_count
-              .hero-widget__counter
-                %strong= number_to_human @instance_presenter.active_user_count, strip_insignificant_zeros: true
-                %span
-                  = t 'about.active_count_after'
-                  %abbr{ title: t('about.active_footnote') } *
+    %br

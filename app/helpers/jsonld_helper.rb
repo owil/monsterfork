@@ -76,9 +76,31 @@ module JsonLdHelper
     json.present? && json['id'] == uri ? json : nil
   end
 
-  def fetch_resource_without_id_validation(uri, on_behalf_of = nil, raise_on_temporary_error = false)
-    on_behalf_of ||= Account.representative
+  def uri_allowed?(uri)
+    host = Addressable::URI.parse(uri)&.normalized_host
+    Rails.cache.fetch("fetch_resource:#{host}", expires_in: 1.hour) { DomainAllow.allowed?(host) }
+  rescue Addressable::URI::InvalidURIError
+    false
+  end
 
+  def fetch_resource_without_id_validation(uri, on_behalf_of = nil, raise_on_temporary_error = false)
+    return unless uri_allowed?(uri)
+
+    on_behalf_of ||= Account.representative
+    skip_retry = on_behalf_of.id == -99 || Rails.env.development?
+
+    begin
+      fetch_body(uri, on_behalf_of, !skip_retry || raise_on_temporary_error)
+    rescue Mastodon::UnexpectedResponseError
+      raise if skip_retry
+
+      fetch_body(uri, Account.representative, raise_on_temporary_error)
+    end
+  rescue Addressable::URI::InvalidURIError
+    nil
+  end
+
+  def fetch_body(uri, on_behalf_of, raise_on_temporary_error = false)
     build_request(uri, on_behalf_of).perform do |response|
       raise Mastodon::UnexpectedResponseError, response unless response_successful?(response) || response_error_unsalvageable?(response) || !raise_on_temporary_error
 
@@ -87,6 +109,9 @@ module JsonLdHelper
   end
 
   def body_to_json(body, compare_id: nil)
+    body.strip! if body.is_a?(String)
+    return if body.blank?
+
     json = body.is_a?(String) ? Oj.load(body, mode: :strict) : body
 
     return if compare_id.present? && json['id'] != compare_id
@@ -114,7 +139,7 @@ module JsonLdHelper
 
   def build_request(uri, on_behalf_of = nil)
     Request.new(:get, uri).tap do |request|
-      request.on_behalf_of(on_behalf_of) if on_behalf_of
+      request.on_behalf_of(on_behalf_of) unless Rails.env.development? || on_behalf_of.blank?
       request.add_headers('Accept' => 'application/activity+json, application/ld+json')
     end
   end

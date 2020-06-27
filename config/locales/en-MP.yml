@@ -1,0 +1,164 @@
+---
+en-MP:
+  about:
+    about_hashtag_html: These are public roars tagged with <strong>#%{hashtag}</strong> from around the fediverse.
+    available_content: Connected servers
+    available_content_html: 'Users and content from these servers can be interacted with from here:'
+    browse_local_posts: Browse a live stream of public roars from Monsterpit
+    browse_public_posts: Browse a live stream of public roars on the fediverse
+    federation_hint_html: Join Monsterpit and meet creatures around the fediverse.
+    hosted_on: Monsterfork hosted on %{domain}
+    instance_actor_flash: This account is a virtual actor used to represent the server itself. It is used for federation purposes and should not be blocked unless you want to block the whole server, in which case you should use a domain block.
+    unavailable_content: Admin overrides
+    unavailable_content_description:
+      silenced: "Posts from these servers will be hidden in public timelines and no notifications will be generated from their users' interactions, unless you are following them or vise-versa.  These are typically set for curation purposes rather than "
+  accounts:
+    endorsements_hint: You can endorse creatures you follow from the web interface, and they will show up here.
+    people_followed_by: Creatures whom %{name} follows
+    people_who_follow: Creatures who follow %{name}
+    pin_errors:
+      following: You must be already following the creature you want to endorse
+    posts:
+      one: Roar
+      other: Roars
+    posts_tab_heading: Blog
+    posts_with_replies: Replies
+    reblogs: Boosts
+    threads: Threads
+    mentions: Mentions
+  admin:
+    accounts:
+      search_same_email_domain: Other creatures with the same e-mail domain
+      search_same_ip: Other creatures with the same IP
+    action_logs:
+      actions:
+        update_status: "%{name} updated roar by %{target}"
+      deleted_status: "(deleted roar)"
+    dashboard:
+      pending_users: creatures waiting for review
+      feature_hcaptcha: hCaptcha
+      recent_users: Recent creatures
+      single_user_mode: Single creature mode
+      total_users: creatures in total
+      week_users_new: creatures this week
+    domain_allows:
+      hidden: Exclude from public server list
+    relays:
+      description_html: A <strong>federation relay</strong> is an intermediary server that exchanges large volumes of public roars between servers that subscribe and publish to it. <strong>It can help small and medium servers discover content from the fediverse</strong>, which would otherwise require local users manually following other people on remote servers.
+      enable_hint: Once enabled, your server will subscribe to all public roars from this relay, and will begin sending this server's public toots to it.
+    settings:
+      activity_api_enabled:
+        desc_html: Counts of locally posted roars, active creatures, and new registrations in weekly buckets
+        title: Publish aggregate statistics about creature activity
+      bootstrap_timeline_accounts:
+        title: Default follows for new creatures
+      default_noindex:
+        desc_html: Affects all creatures who have not changed this setting themselves
+        title: Opt creatures out of search engine indexing by default
+      domain_allows:
+        title: Show allowed domains
+      domain_blocks:
+        users: To logged-in local creatures
+      enable_bootstrap_timeline_accounts:
+        title: Enable default follows for new creatures
+      profile_directory:
+        desc_html: Allow creatures to be discoverable
+      registrations:
+        errors:
+          captcha_fail: Captcha verification failed
+      show_staff_badge:
+        desc_html: Display staff badges on profiles
+  appearance:
+    toot_layout: Roar layout
+    custom_css: Custom CSS
+    custom_css_error: "There are problems with the above CSS that must be fixed before it can be applied:"
+  auth:
+    description:
+      prefix_invited_by_user: "@%{name} invites you to join Monsterpit!"
+      prefix_sign_up: Roar with Monsterpit!
+      suffix: On Monsterpit, you'll be able to commune with creatures across the fediverse!
+  authorize_follow:
+    already_following: You are already following this creature
+    already_requested: You have already sent a follow request to that creature
+    error: Unfortunately, there was an error looking up that creature's account
+    post_follow:
+      return: Show the creature's profile
+  domain_permissions:
+    success: Domain permissions saved!
+  existing_username_validator:
+    not_found: could not find a local creature with that username
+  exports:
+    archive_takeout:
+      hint_html: You can request an archive of your <strong>roars and media</strong>. The exported data will be in the ActivityPub format, readable by any compliant software. You can request an archive every 7 days.
+  notification_mailer:
+    favourite:
+      body: 'Your status was admired by %{name}:'
+      subject: "%{name} admired your roar"
+      title: New admiration
+    reblog:
+      body: 'Your roar was boosted by %{name}:'
+      subject: "%{name} boosted your roar"
+      title: New roar
+  preferences:
+    advanced_publishing: Advanced publishing options
+    filtering: Filtering options
+    publishing: Advanced publishing
+  remote_interaction:
+    favourite:
+      proceed: Proceed to admire
+      prompt: 'You want to admire this roar:'
+    reblog:
+      proceed: Proceed to boost
+      prompt: 'You want to boost this roar:'
+    reply:
+      proceed: Proceed to reply
+      prompt: 'You want to reply to this roar:'
+  scheduled_statuses:
+    over_daily_limit: You have exceeded the limit of %{limit} scheduled roars for that day
+    over_total_limit: You have exceeded the limit of %{limit} scheduled roars
+  stream_entries:
+    pinned: ''
+    reblogged: ''
+  pin_errors:
+      limit: You have already pinned the maximum number of roars
+      ownership: Someone else's roar cannot be pinned
+      private: Non-public roar cannot be pinned
+  settings:
+    monsterfork: Monsterfork
+    profiles:
+      privacy: Privacy
+      privacy_html: These options allow you to adjust how much information is visible on your public profile on Monsterpit.  <strong>Be aware that other servers you send your roars to have their own profile systems and may not honor these options.  You will need to use <em>followers-only</em> or <em>direct</em> privacy for roars you do not want displayed in other servers' public profiles.</strong>
+      advanced_privacy: Advanced privacy
+      advanced_privacy_html: These options can increase your privacy at the expense of compatability with other servers. <strong>They can potentially cause roars to not be delivered to some of your followers.  Only enable them if you're fully aware of their side effects.</strong>
+  timer:
+    '0': Never
+    1: 1 minute
+    2: 2 minutes
+    3: 3 minutes
+    5: 5 minutes
+    10: 10 minutes
+    15: 15 minutes
+    30: 30 minutes
+    60: 1 hour
+    120: 2 hours
+    180: 3 hours
+    360: 6 hours
+    720: 12 hours
+    1440: 1 day
+    2880: 2 days
+    4320: 3 days
+    7200: 5 days
+    10080: 1 week
+    20160: 2 weeks
+    30240: 3 weeks
+    60480: 6 weeks
+    120960: 12 weeks
+    181440: 18 weeks
+    241920: 24 weeks
+    362880: 36 weeks
+    524160: 52 weeks
+  user_mailer:
+    warning:
+      explanation:
+        silence: While your account is limited, only creatures who are already following you will see your roars on this server, and you may be excluded from various public listings. However, others may still manually follow you.
+        suspend: Your account has been suspended, and all of your roars and your uploaded media files have been irreversibly removed from this server, and servers where you had followers.

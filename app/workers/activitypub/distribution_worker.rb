@@ -9,11 +9,12 @@ class ActivityPub::DistributionWorker
   def perform(status_id)
     @status  = Status.find(status_id)
     @account = @status.account
+    @payload = {}
 
     return if skip_distribution?
 
     ActivityPub::DeliveryWorker.push_bulk(inboxes) do |inbox_url|
-      [payload, @account.id, inbox_url]
+      [payload(Addressable::URI.parse(inbox_url).host), @account.id, inbox_url]
     end
 
     relay! if relayable?
@@ -24,7 +25,7 @@ class ActivityPub::DistributionWorker
   private
 
   def skip_distribution?
-    @status.direct_visibility? || @status.limited_visibility?
+    !@status.published? || @status.direct_visibility? || @status.limited_visibility?
   end
 
   def relayable?
@@ -35,20 +36,20 @@ class ActivityPub::DistributionWorker
     # Deliver the status to all followers.
     # If the status is a reply to another local status, also forward it to that
     # status' authors' followers.
-    @inboxes ||= if @status.reply? && @status.thread.account.local? && @status.distributable?
+    @inboxes ||= if @status.reply? && @status.thread&.account&.local? && @status.distributable?
                    @account.followers.or(@status.thread.account.followers).inboxes
                  else
                    @account.followers.inboxes
                  end
   end
 
-  def payload
-    @payload ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status), ActivityPub::ActivitySerializer, signer: @account))
+  def payload(domain)
+    @payload[domain] ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status, update: true, embed: false), ActivityPub::ActivitySerializer, signer: @account, target_domain: domain))
   end
 
   def relay!
     ActivityPub::DeliveryWorker.push_bulk(Relay.enabled.pluck(:inbox_url)) do |inbox_url|
-      [payload, @account.id, inbox_url]
+      [payload(Addressable::URI.parse(inbox_url).host), @account.id, inbox_url]
     end
   end
 end

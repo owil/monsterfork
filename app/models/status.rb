@@ -21,13 +21,23 @@
 #  account_id             :bigint(8)        not null
 #  application_id         :bigint(8)
 #  in_reply_to_account_id :bigint(8)
-#  local_only             :boolean
-#  full_status_text       :text             default(""), not null
+#  local_only             :boolean          default(FALSE), not null
 #  poll_id                :bigint(8)
 #  content_type           :string
 #  deleted_at             :datetime
+#  edited                 :integer          default(0), not null
+#  nest_level             :integer          default(0), not null
+#  published              :boolean          default(TRUE), not null
+#  title                  :text
+#  semiprivate            :boolean          default(FALSE), not null
+#  original_text          :text
+#  footer                 :text
+#  expires_at             :datetime
+#  publish_at             :datetime
+#  originally_local_only  :boolean          default(FALSE), not null
 #
 
+# rubocop:disable Metrics/ClassLength
 class Status < ApplicationRecord
   before_destroy :unlink_from_conversations
 
@@ -52,7 +62,7 @@ class Status < ApplicationRecord
   belongs_to :application, class_name: 'Doorkeeper::Application', optional: true
 
   belongs_to :account, inverse_of: :statuses
-  belongs_to :in_reply_to_account, foreign_key: 'in_reply_to_account_id', class_name: 'Account', optional: true
+  belongs_to :in_reply_to_account, class_name: 'Account', optional: true
   belongs_to :conversation, optional: true
   belongs_to :preloadable_poll, class_name: 'Poll', foreign_key: 'poll_id', optional: true
 
@@ -65,7 +75,14 @@ class Status < ApplicationRecord
   has_many :replies, foreign_key: 'in_reply_to_id', class_name: 'Status', inverse_of: :thread
   has_many :mentions, dependent: :destroy, inverse_of: :status
   has_many :active_mentions, -> { active }, class_name: 'Mention', inverse_of: :status
+  has_many :silent_mentions, -> { silent }, class_name: 'Mention', inverse_of: :status
   has_many :media_attachments, dependent: :nullify
+
+  has_many :inlined_attachments, class_name: 'InlineMediaAttachment', inverse_of: :status, dependent: :destroy
+  has_many :mutes, class_name: 'StatusMute', inverse_of: :status, dependent: :destroy
+  belongs_to :conversation_mute, primary_key: 'conversation_id', foreign_key: 'conversation_id', inverse_of: :conversation, dependent: :destroy, optional: true
+  has_many :domain_permissions, class_name: 'StatusDomainPermission', inverse_of: :status, dependent: :destroy
+  has_many :queued_boosts, inverse_of: :status, dependent: :destroy
 
   has_and_belongs_to_many :tags
   has_and_belongs_to_many :preview_cards
@@ -93,7 +110,8 @@ class Status < ApplicationRecord
   scope :with_accounts, ->(ids) { where(id: ids).includes(:account) }
   scope :without_replies, -> { where('statuses.reply = FALSE OR statuses.in_reply_to_account_id = statuses.account_id') }
   scope :without_reblogs, -> { where('statuses.reblog_of_id IS NULL') }
-  scope :with_public_visibility, -> { where(visibility: :public) }
+  scope :with_public_visibility, -> { where(visibility: :public, published: true) }
+  scope :distributable, -> { where(visibility: [:public, :unlisted], published: true) }
   scope :tagged_with, ->(tag) { joins(:statuses_tags).where(statuses_tags: { tag_id: tag }) }
   scope :excluding_silenced_accounts, -> { left_outer_joins(:account).where(accounts: { silenced_at: nil }) }
   scope :including_silenced_accounts, -> { left_outer_joins(:account).where.not(accounts: { silenced_at: nil }) }
@@ -112,6 +130,22 @@ class Status < ApplicationRecord
   }
 
   scope :not_local_only, -> { where(local_only: [false, nil]) }
+
+  scope :including_unpublished, -> { unscope(where: :published) }
+  scope :unpublished, -> { rewhere(published: false) }
+  scope :published, -> { where(published: true) }
+  scope :without_semiprivate, -> { where(semiprivate: false) }
+  scope :reblogs, -> { where('statuses.reblog_of_id IS NOT NULL') }
+  scope :locally_reblogged, -> { where(id: Status.unscoped.local.reblogs.select(:reblog_of_id)) }
+  scope :conversations_by, ->(account) { joins(:conversation).where(conversations: { account: account }) }
+  scope :mentioning_account, ->(account) { joins(:mentions).where(mentions: { account: account }) }
+  scope :replies, -> { where(reply: true).where('statuses.in_reply_to_account_id != statuses.account_id') }
+  scope :expired, -> { published.where('statuses.expires_at IS NOT NULL AND statuses.expires_at < ?', Time.now.utc) }
+  scope :ready_to_publish, -> { unpublished.where('statuses.publish_at IS NOT NULL AND statuses.publish_at < ?', Time.now.utc) }
+
+  scope :not_hidden_by_account, ->(account) do
+    left_outer_joins(:mutes, :conversation_mute).where('(status_mutes.account_id IS NULL OR status_mutes.account_id != ?) AND (conversation_mutes.account_id IS NULL OR (conversation_mutes.account_id != ? AND conversation_mutes.hidden = TRUE))', account.id, account.id)
+  end
 
   cache_associated :application,
                    :media_attachments,
@@ -136,8 +170,20 @@ class Status < ApplicationRecord
                    thread: { account: :account_stat }
 
   delegate :domain, to: :account, prefix: true
+  delegate :max_visibility_for_domain, to: :account
 
   REAL_TIME_WINDOW = 6.hours
+  SORTED_VISIBILITY = {
+    direct: 0,
+    limited: 1,
+    private: 2,
+    unlisted: 3,
+    public: 4,
+  }.with_indifferent_access.freeze
+  TIMER_VALUES = [
+    0, 1, 2, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 4320, 7200,
+    10_080, 20_160, 30_240, 60_480, 120_960, 181_440, 241_920, 362_880, 524_160
+  ].freeze
 
   def searchable_by(preloaded = nil)
     ids = []
@@ -204,7 +250,7 @@ class Status < ApplicationRecord
   end
 
   def hidden?
-    !distributable?
+    !published? || !distributable?
   end
 
   def distributable?
@@ -228,7 +274,7 @@ class Status < ApplicationRecord
   def emojis
     return @emojis if defined?(@emojis)
 
-    fields  = [spoiler_text, text]
+    fields  = [spoiler_text, text, footer || '']
     fields += preloadable_poll.options unless preloadable_poll.nil?
 
     @emojis = CustomEmoji.from_text(fields.join(' '), account.domain)
@@ -262,23 +308,98 @@ class Status < ApplicationRecord
     update_status_stat!(key => [public_send(key) - 1, 0].max)
   end
 
+  def notify=(value)
+    Redis.current.set("status:#{id}:notify", value ? 1 : 0, ex: 1.hour)
+    @notify = value
+  end
+
+  def notify
+    return @notify if defined?(@notify)
+
+    value = Redis.current.get("status:#{id}:notify")
+    @notify = value.nil? ? true : value.to_i == 1
+  end
+
+  alias notify? notify
+
+  def less_private_than?(other_visibility)
+    return false if other_visibility.blank?
+
+    SORTED_VISIBILITY[visibility] > SORTED_VISIBILITY[other_visibility]
+  end
+
+  def more_private_than?(other_visibility)
+    return false if other_visibility.blank?
+
+    SORTED_VISIBILITY[visibility] < SORTED_VISIBILITY[other_visibility]
+  end
+
+  def visibility_for_domain(domain)
+    return visibility.to_s if domain.blank?
+
+    v = domain_permissions.find_by(domain: [domain, '*'])&.visibility || visibility.to_s
+
+    case max_visibility_for_domain(domain)
+    when 'public'
+      v
+    when 'unlisted'
+      v == 'public' ? 'unlisted' : v
+    when 'private'
+      %w(public unlisted).include?(v) ? 'private' : v
+    when 'direct'
+      'direct'
+    else
+      v != 'direct' ? 'limited' : 'direct'
+    end
+  end
+
+  def public_domain_permissions?
+    return @public_permissions if defined?(@public_permissions)
+    return @public_permissions = false unless account.local?
+
+    @public_permissions = domain_permissions.where(visibility: [:public, :unlisted]).exists?
+  end
+
+  def private_domain_permissions?
+    return @private_permissions if defined?(@private_permissions)
+    return @private_permissions = false unless account.local?
+
+    @private_permissions = domain_permissions.where(visibility: [:private, :direct, :limited]).exists?
+  end
+
+  def should_be_semiprivate?
+    return @should_be_semiprivate if defined?(@should_be_semiprivate)
+    return @should_be_semiprivate = true if distributable? && (private_domain_permissions? || account.private_domain_permissions?)
+
+    @should_be_semiprivate = !distributable? && (public_domain_permissions? || account.public_domain_permissions?)
+  end
+
+  def should_limit_visibility?
+    less_private_than?(thread&.visibility)
+  end
+
   after_create_commit  :increment_counter_caches
   after_destroy_commit :decrement_counter_caches
 
   after_create_commit :store_uri, if: :local?
+  after_create_commit :store_url, if: :local?
   after_create_commit :update_statistics, if: :local?
 
   around_create Mastodon::Snowflake::Callbacks
 
   before_create :set_locality
+  before_create :set_nest_level
 
   before_validation :prepare_contents, if: :local?
   before_validation :set_reblog
-  before_validation :set_visibility
-  before_validation :set_conversation
+  before_validation :set_conversation_perms
   before_validation :set_local
 
   after_create :set_poll_id
+
+  after_save :set_domain_permissions, if: :local?
+  after_save :set_semiprivate, if: :local?
+  after_save :set_conversation_root
 
   class << self
     def selectable_visibilities
@@ -338,7 +459,7 @@ class Status < ApplicationRecord
     end
 
     def as_tag_timeline(tag, account = nil, local_only = false)
-      query = timeline_scope(local_only).tagged_with(tag)
+      query = timeline_scope(local_only, include_unlisted: true).tagged_with(tag)
 
       apply_timeline_filters(query, account, local_only)
     end
@@ -363,6 +484,14 @@ class Status < ApplicationRecord
       ConversationMute.select('conversation_id').where(conversation_id: conversation_ids).where(account_id: account_id).each_with_object({}) { |m, h| h[m.conversation_id] = true }
     end
 
+    def hidden_conversations_map(conversation_ids, account_id)
+      ConversationMute.select('conversation_id').where(conversation_id: conversation_ids, hidden: true).where(account_id: account_id).each_with_object({}) { |m, h| h[m.conversation_id] = true }
+    end
+
+    def hidden_statuses_map(status_ids, account_id)
+      StatusMute.select('status_id').where(status_id: status_ids).where(account_id: account_id).each_with_object({}) { |m, h| h[m.status_id] = true }
+    end
+
     def pins_map(status_ids, account_id)
       StatusPin.select('status_id').where(status_id: status_ids).where(account_id: account_id).each_with_object({}) { |p, h| h[p.status_id] = true }
     end
@@ -379,7 +508,7 @@ class Status < ApplicationRecord
 
       return if account_ids.empty?
 
-      accounts = Account.where(id: account_ids).includes(:account_stat).each_with_object({}) { |a, h| h[a.id] = a }
+      accounts = Account.where(id: account_ids).includes(:account_stat).index_by(&:id)
 
       cached_items.each do |item|
         item.account = accounts[item.account_id]
@@ -387,26 +516,26 @@ class Status < ApplicationRecord
       end
     end
 
-    def permitted_for(target_account, account)
+    def permitted_for(target_account, account, **options)
       visibility = [:public, :unlisted]
 
-      if account.nil?
-        where(visibility: visibility).not_local_only
-      elsif target_account.blocking?(account) || (account.domain.present? && target_account.domain_blocking?(account.domain)) # get rid of blocked peeps
-        none
-      elsif account.id == target_account.id # author can see own stuff
-        all
-      else
-        # followers can see followers-only stuff, but also things they are mentioned in.
-        # non-followers can see everything that isn't private/direct, but can see stuff they are mentioned in.
+      if account.present?
+        return none if target_account.blocking?(account) || (account.domain.present? && target_account.domain_blocking?(account.domain))
+        return apply_category_filters(all, target_account, account, **options) if account.id == target_account.id
+
         visibility.push(:private) if account.following?(target_account)
-
-        scope = left_outer_joins(:reblog)
-
-        scope.where(visibility: visibility)
-             .or(scope.where(id: account.mentions.select(:status_id)))
-             .merge(scope.where(reblog_of_id: nil).or(scope.where.not(reblogs_statuses: { account_id: account.excluded_from_timeline_account_ids })))
       end
+
+      visibility = :public if options[:public] || (account.blank? && !target_account.show_unlisted?)
+
+      scope = where(visibility: visibility)
+      apply_category_filters(scope, target_account, account, **options)
+    end
+
+    def mentions_between(account, target_account)
+      return none if account.blank? || target_account.blank?
+
+      account.statuses.mentioning_account(target_account).or(target_account.statuses.mentioning_account(account))
     end
 
     def from_text(text)
@@ -426,21 +555,75 @@ class Status < ApplicationRecord
 
     private
 
-    def timeline_scope(scope = false)
+    # TODO: Cast cleanup spell.
+    # rubocop:disable Metrics/PerceivedComplexity
+    def apply_category_filters(query, target_account, account, **options)
+      options[:without_account_filters] ||= target_account.id == account&.id
+      query = apply_account_filters(query, account, **options)
+      return query if options[:without_category_filters]
+
+      query = query.published unless options[:include_unpublished]
+      query = query.without_semiprivate unless options[:include_semiprivate]
+
+      if options[:only_reblogs]
+        query = query.joins(:reblog)
+        if account.present? && account.excluded_from_timeline_account_ids.present?
+          query = query.where.not(
+            reblogs_statuses: { account_id: account.excluded_from_timeline_account_ids }
+          )
+        end
+      elsif target_account.id == account&.id
+        query = query.without_replies unless options[:include_replies] || options[:only_replies]
+        query = query.without_reblogs unless options[:include_reblogs] || options[:only_reblogs]
+        query = query.reblogs if options[:only_reblogs]
+        query = query.replies if options[:only_replies]
+      else
+        if options[:include_reblogs] && account.present? && account.excluded_from_timeline_account_ids.present?
+          query = query.left_outer_joins(:reblog).where(
+            '(statuses.reblog_of_id IS NULL OR reblogs_statuses.account_id NOT IN (?))',
+            account.excluded_from_timeline_account_ids
+          )
+        elsif !options[:include_reblogs]
+          query = query.without_reblogs
+        end
+
+        query = if options[:include_replies]
+                  query = query.replies if options[:only_replies]
+                  query.conversations_by(target_account)
+                else
+                  query.without_replies
+                end
+      end
+
+      return query if options[:tag].blank?
+
+      (tag = Tag.find_normalized(options[:tag])) ? query.merge(Status.tagged_with(tag.id)) : none
+    end
+    # rubocop:enable Metrics/PerceivedComplexity
+
+    def apply_account_filters(query, account, **options)
+      return query.not_local_only if account.blank?
+      return (!options[:exclude_local_only] && account.local? ? query : query.not_local_only) if options[:without_account_filters]
+
+      query = query.not_local_only unless !options[:exclude_local_only] && account.local?
+      query = query.not_hidden_by_account(account)
+      query = query.in_chosen_languages(account) if account.chosen_languages.present?
+      query
+    end
+
+    def timeline_scope(scope = false, include_unlisted: false)
       starting_scope = case scope
                        when :local, true
                          Status.local
                        when :remote
                          Status.remote
+                       when :local_reblogs
+                         Status.locally_reblogged
                        else
                          Status
                        end
-      starting_scope = starting_scope.with_public_visibility
-      if Setting.show_reblogs_in_public_timelines
-        starting_scope
-      else
-        starting_scope.without_reblogs
-      end
+      starting_scope = include_unlisted ? starting_scope.distributable : starting_scope.with_public_visibility
+      scope != :local_reblogs ? starting_scope.without_reblogs : starting_scope
     end
 
     def apply_timeline_filters(query, account, local_only)
@@ -455,6 +638,7 @@ class Status < ApplicationRecord
       query = query.not_excluded_by_account(account)
       query = query.not_domain_blocked_by_account(account) unless local_only
       query = query.in_chosen_languages(account) if account.chosen_languages.present?
+      query = query.not_hidden_by_account(account)
       query.merge(account_silencing_filter(account))
     end
 
@@ -497,9 +681,15 @@ class Status < ApplicationRecord
     update_column(:uri, ActivityPub::TagManager.instance.uri_for(self)) if uri.nil?
   end
 
+  def store_url
+    update_column(:url, ActivityPub::TagManager.instance.url_for(self)) if url.nil?
+  end
+
   def prepare_contents
     text&.strip!
     spoiler_text&.strip!
+    title&.strip!
+    language&.gsub!('en-MP', 'en')
   end
 
   def set_reblog
@@ -510,29 +700,36 @@ class Status < ApplicationRecord
     update_column(:poll_id, poll.id) unless poll.nil?
   end
 
-  def set_visibility
-    self.visibility = reblog.visibility if reblog? && visibility.nil?
-    self.visibility = (account.locked? ? :private : :public) if visibility.nil?
-    self.sensitive  = false if sensitive.nil?
-  end
-
   def set_locality
     if account.domain.nil? && !attribute_changed?(:local_only)
-      self.local_only = marked_local_only?
+      self.local_only = true if marked_local_only?
     end
+    self.local_only = true if thread&.local_only? && local_only.nil?
+    self.local_only = reblog.local_only if reblog?
+
+    self.originally_local_only = local_only if attribute_changed?(:local_only) && !attribute_changed?(:originally_local_only)
   end
 
-  def set_conversation
+  def set_conversation_perms
     self.thread = thread.reblog if thread&.reblog?
-
     self.reply = !(in_reply_to_id.nil? && thread.nil?) unless reply
+    self.visibility = reblog.visibility if reblog? && visibility.nil?
+    self.visibility = (account.locked? ? :private : :public) if visibility.nil?
+    self.visibility = thread.visibility if should_limit_visibility?
+    self.sensitive  = false if sensitive.nil?
 
     if reply? && !thread.nil?
       self.in_reply_to_account_id = carried_over_reply_to_account_id
       self.conversation_id        = thread.conversation_id if conversation_id.nil?
     elsif conversation_id.nil?
-      self.conversation = Conversation.new
+      self.conversation = reply? ? Conversation.new(account_id: nil) : Conversation.new(account_id: account_id)
+    elsif !reply? && account_id != conversation.account_id
+      conversation.update!(account_id: account_id)
     end
+  end
+
+  def set_conversation_root
+    conversation.update!(root: uri, account_id: account_id) if !reply && conversation.root.blank?
   end
 
   def carried_over_reply_to_account_id
@@ -545,6 +742,32 @@ class Status < ApplicationRecord
 
   def set_local
     self.local = account.local?
+  end
+
+  def set_nest_level
+    return if attribute_changed?(:nest_level)
+
+    self.nest_level = if reply?
+                        [thread&.account_id == account_id ? thread&.nest_level.to_i : thread&.nest_level.to_i + 1, 127].min
+                      else
+                        0
+                      end
+  end
+
+  def set_domain_permissions
+    return unless saved_change_to_visibility?
+
+    domain_permissions.transaction do
+      existing_domains = domain_permissions.select(:domain)
+      permissions = account.domain_permissions.where.not(domain: existing_domains)
+      permissions.find_each do |permission|
+        domain_permissions.create!(domain: permission.domain, visibility: permission.visibility) if less_private_than?(permission.visibility)
+      end
+    end
+  end
+
+  def set_semiprivate
+    update_column(:semiprivate, should_be_semiprivate?) if semiprivate != should_be_semiprivate?
   end
 
   def update_statistics
@@ -580,3 +803,4 @@ class Status < ApplicationRecord
     end
   end
 end
+# rubocop:enable Metrics/ClassLength

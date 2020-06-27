@@ -45,6 +45,7 @@ module Mastodon
     # All translations from config/locales/*.rb,yml are auto loaded.
     # config.i18n.load_path += Dir[Rails.root.join('my', 'locales', '*.{rb,yml}').to_s]
     config.i18n.available_locales = [
+      :'en-MP',
       :ar,
       :ast,
       :bg,
@@ -116,10 +117,11 @@ module Mastodon
       :'zh-TW',
     ]
 
-    config.i18n.default_locale = ENV['DEFAULT_LOCALE']&.to_sym
+    config.i18n.default_locale = ENV.fetch('DEFAULT_LOCALE', 'en-MP')&.to_sym
+    config.i18n.fallbacks = [:'en-MP', :en]
 
     unless config.i18n.available_locales.include?(config.i18n.default_locale)
-      config.i18n.default_locale = :en
+      config.i18n.default_locale = :'en-MP'
     end
 
     # config.paths.add File.join('app', 'api'), glob: File.join('**', '*.rb')

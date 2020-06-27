@@ -60,8 +60,8 @@ class ActivityPub::TagManager
   # Public statuses go out to primarily the public collection
   # Unlisted and private statuses go out primarily to the followers collection
   # Others go out only to the people they mention
-  def to(status)
-    case status.visibility
+  def to(status, target_domain: nil)
+    case status.visibility_for_domain(target_domain)
     when 'public'
       [COLLECTIONS[:public]]
     when 'unlisted', 'private'
@@ -92,19 +92,39 @@ class ActivityPub::TagManager
   # Unlisted statuses go to the public as well
   # Both of those and private statuses also go to the people mentioned in them
   # Direct ones don't have a secondary audience
-  def cc(status)
+  def cc(status, target_domain: nil)
     cc = []
 
     cc << uri_for(status.reblog.account) if status.reblog?
 
-    case status.visibility
+    visibility = status.visibility_for_domain(target_domain)
+
+    case visibility
     when 'public'
       cc << account_followers_url(status.account)
     when 'unlisted'
       cc << COLLECTIONS[:public]
+    when 'limited'
+      if status.account.silenced?
+        # Only notify followers if the account is locally silenced
+        account_ids = status.silent_mentions.pluck(:account_id)
+        cc.concat(status.account.followers.where(id: account_ids).each_with_object([]) do |account, result|
+          result << uri_for(account)
+          result << account_followers_url(account) if account.group?
+        end)
+        cc.concat(FollowRequest.where(target_account_id: status.account_id, account_id: account_ids).each_with_object([]) do |request, result|
+          result << uri_for(request.account)
+          result << account_followers_url(request.account) if request.account.group?
+        end)
+      else
+        cc.concat(status.silent_mentions.each_with_object([]) do |mention, result|
+          result << uri_for(mention.account)
+          result << account_followers_url(mention.account) if mention.account.group?
+        end)
+      end
     end
 
-    unless status.direct_visibility? || status.limited_visibility?
+    unless %w(direct limited).include?(visibility)
       if status.account.silenced?
         # Only notify followers if the account is locally silenced
         account_ids = status.active_mentions.pluck(:account_id)

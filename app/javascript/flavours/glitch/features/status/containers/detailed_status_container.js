@@ -17,7 +17,9 @@ import {
 import {
   muteStatus,
   unmuteStatus,
+  editStatus,
   deleteStatus,
+  publishStatus,
   hideStatus,
   revealStatus,
 } from 'flavours/glitch/actions/statuses';
@@ -34,6 +36,8 @@ const messages = defineMessages({
   deleteMessage: { id: 'confirmations.delete.message', defaultMessage: 'Are you sure you want to delete this status?' },
   redraftConfirm: { id: 'confirmations.redraft.confirm', defaultMessage: 'Delete & redraft' },
   redraftMessage: { id: 'confirmations.redraft.message', defaultMessage: 'Are you sure you want to delete this status and re-draft it? Favourites and boosts will be lost, and replies to the original post will be orphaned.' },
+  publishConfirm: { id: 'confirmations.publish.confirm', defaultMessage: 'Publish' },
+  publishMessage: { id: 'confirmations.publish.message', defaultMessage: 'Are you ready to publish your post?' },
   replyConfirm: { id: 'confirmations.reply.confirm', defaultMessage: 'Reply' },
   replyMessage: { id: 'confirmations.reply.message', defaultMessage: 'Replying now will overwrite the message you are currently composing. Are you sure you want to proceed?' },
 });
@@ -116,6 +120,18 @@ const mapDispatchToProps = (dispatch, { intl }) => ({
         onConfirm: () => dispatch(deleteStatus(status.get('id'), history, withRedraft)),
       }));
     }
+  },
+
+  onEdit (status, history) {
+    dispatch(editStatus(status, history));
+  },
+
+  onPublish (status) {
+    dispatch(openModal('CONFIRM', {
+      message: intl.formatMessage(messages.publishMessage),
+      confirm: intl.formatMessage(messages.publishConfirm),
+      onConfirm: () => dispatch(publishStatus(status.get('id'))),
+    }));
   },
 
   onDirect (account, router) {

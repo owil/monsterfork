@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import { isRtl } from 'flavours/glitch/util/rtl';
 import { FormattedMessage } from 'react-intl';
 import Permalink from './permalink';
+import RelativeTimestamp from 'flavours/glitch/components/relative_timestamp';
 import classnames from 'classnames';
 import Icon from 'flavours/glitch/components/icon';
 import { autoPlayGif } from 'flavours/glitch/util/initial_state';
@@ -13,7 +14,7 @@ const textMatchesTarget = (text, origin, host) => {
   return (text === origin || text === host
           || text.startsWith(origin + '/') || text.startsWith(host + '/')
           || 'www.' + text === host || ('www.' + text).startsWith(host + '/'));
-}
+};
 
 const isLinkMisleading = (link) => {
   let linkTextParts = [];
@@ -77,11 +78,13 @@ export default class StatusContent extends React.PureComponent {
     onUpdate: PropTypes.func,
     tagLinks: PropTypes.bool,
     rewriteMentions: PropTypes.string,
+    article: PropTypes.bool,
   };
 
   static defaultProps = {
     tagLinks: true,
     rewriteMentions: 'no',
+    article: false,
   };
 
   state = {
@@ -231,7 +234,7 @@ export default class StatusContent extends React.PureComponent {
 
     let element = e.target;
     while (element) {
-      if (['button', 'video', 'a', 'label', 'canvas'].includes(element.localName)) {
+      if (['button', 'video', 'a', 'label', 'canvas', 'details', 'summary'].includes(element.localName)) {
         return;
       }
       element = element.parentNode;
@@ -271,23 +274,213 @@ export default class StatusContent extends React.PureComponent {
       disabled,
       tagLinks,
       rewriteMentions,
+      article,
     } = this.props;
 
     const hidden = this.props.onExpandedToggle ? !this.props.expanded : this.state.hidden;
 
-    const content = { __html: status.get('contentHtml') };
-    const spoilerContent = { __html: status.get('spoilerHtml') };
+    const edited = (status.get('edited') === 0) ? null : (
+      <div className='status__notice status__edit-notice'>
+        <Icon id='pencil-square-o' />
+        <FormattedMessage
+          id='status.edited'
+          defaultMessage='{count, plural, one {# edit} other {# edits}} · last update: {updated_at}'
+          key={`edit-${status.get('id')}`}
+          values={{
+            count: status.get('edited'),
+            updated_at: <RelativeTimestamp timestamp={status.get('updated_at')} />,
+          }}
+        />
+      </div>
+    );
+
+    const unpublished = (status.get('published') === false) && (
+      <div className='status__notice status__unpublished-notice'>
+        <Icon id='chain-broken' />
+        <FormattedMessage
+          id='status.unpublished'
+          defaultMessage='Unpublished'
+          key={`unpublished-${status.get('id')}`}
+        />
+      </div>
+    );
+
+    const local_only = (status.get('local_only') === true) && (
+      <div className='status__notice status__localonly-notice'>
+        <Icon id='home' />
+        <FormattedMessage
+          id='advanced_options.local-only.short'
+          defaultMessage='Local-only'
+          key={`localonly-${status.get('id')}`}
+        />
+      </div>
+    );
+
+    const quiet = (status.get('notify') === false) && (
+      <div className='status__notice status__quiet-notice'>
+        <Icon id='bell-slash' />
+        <FormattedMessage
+          id='status.quiet'
+          defaultMessage='Quiet local publish'
+          key={`quiet-${status.get('id')}`}
+        />
+      </div>
+    );
+
+    const article_content = status.get('article') && (
+      <div className='status__notice status__article-notice'>
+        <Icon id='file-text-o' />
+        <Permalink
+          href={status.get('url')}
+          to={`/statuses/${status.get('id')}`}
+        >
+          <FormattedMessage
+            id='status.article'
+            defaultMessage='Article'
+            key={`article-${status.get('id')}`}
+          />
+        </Permalink>
+      </div>
+    );
+
+    const publish_at = status.get('publish_at') && (
+      <div className='status__notice status__publish-notice'>
+        <Icon id='bullhorn' />
+        <FormattedMessage
+          id='status.publish_at'
+          defaultMessage='Auto-publish: {publish_at}'
+          key={`publish-${status.get('id')}`}
+          values={{
+            publish_at: <RelativeTimestamp timestamp={status.get('publish_at')} futureDate />,
+          }}
+        />
+      </div>
+    );
+
+    const expires_at = !unpublished && status.get('expires_at') && (
+      <div className='status__notice status__expires-notice'>
+        <Icon id='clock-o' />
+        <FormattedMessage
+          id='status.expires_at'
+          defaultMessage='Self-destruct: {expires_at}'
+          key={`expires-${status.get('id')}`}
+          values={{
+            expires_at: <RelativeTimestamp timestamp={status.get('expires_at')} futureDate />,
+          }}
+        />
+      </div>
+    );
+
+    const status_notice_wrapper = (
+      <div className='status__notice-wrapper'>
+        {unpublished}
+        {publish_at}
+        {expires_at}
+        {quiet}
+        {edited}
+        {local_only}
+        {article_content}
+      </div>
+    );
+
+    const permissions_present = status.get('domain_permissions') && status.get('domain_permissions').size > 0;
+
+    const status_permission_items = permissions_present && status.get('domain_permissions').map((permission) => (
+      <li className='permission-status'>
+        <Icon id='eye-slash' />
+        <FormattedMessage
+          id='status.permissions.visibility.status'
+          defaultMessage='{visibility} 🡲 {domain}'
+          key={`permissions-visibility-${status.get('id')}`}
+          values={{
+            domain: <span>{permission.get('domain')}</span>,
+            visibility: <span>{permission.get('visibility')}</span>,
+          }}
+        />
+      </li>
+    ));
+
+    const permissions = status_permission_items && (
+      <details className='status__permissions' onMouseDown={this.handleMouseDown} onMouseUp={this.handleMouseUp}>
+        <summary>
+          <Icon id='unlock-alt' />
+          <FormattedMessage
+            id='status.permissions.title'
+            defaultMessage='Show extended permissions...'
+            key={`permissions-${status.get('id')}`}
+          />
+        </summary>
+        <ul>
+          {status_permission_items}
+        </ul>
+      </details>
+    );
+
+    const tag_items = (status.get('tags') && status.get('tags').size > 0) && status.get('tags').map(hashtag =>
+      (
+        <li>
+          <Icon id='tag' />
+          <Permalink
+            href={hashtag.get('url')}
+            to={`/timelines/tag/${hashtag.get('name')}`}
+          >
+            <span>{hashtag.get('name')}</span>
+          </Permalink>
+        </li>
+      ));
+
+    const tags = tag_items && (
+      <details className='status__tags' onMouseDown={this.handleMouseDown} onMouseUp={this.handleMouseUp}>
+        <summary>
+          <Icon id='tag' />
+          <FormattedMessage
+            id='status.tags'
+            defaultMessage='Show all tags...'
+            key={`tags-${status.get('id')}`}
+          />
+        </summary>
+        <ul>
+          {tag_items}
+        </ul>
+      </details>
+    );
+
+    const footers = (
+      <div className='status__footers'>
+        {permissions}
+        {tags}
+      </div>
+    );
+
+    const reblog_spoiler_html = status.get('reblogSpoilerPresent') && { __html: status.get('reblogSpoilerHtml') };
+    const reblog_spoiler = reblog_spoiler_html && (
+      <div className='reblog-spoiler spoiler'>
+        <Icon id='retweet' />
+        <span dangerouslySetInnerHTML={reblog_spoiler_html} />
+      </div>
+    );
+
+    const spoiler_html = status.get('spoiler_text').length > 0 && { __html: status.get('spoilerHtml') };
+    const spoiler = spoiler_html && (
+      <div className='spoiler'>
+        <Icon id='info-circle' />
+        <span dangerouslySetInnerHTML={spoiler_html} />
+      </div>
+    );
+
+    const spoiler_present = status.get('spoiler_text').length > 0 || status.get('reblogSpoilerPresent');
+    const content = { __html: article ? status.get('articleHtml') : status.get('contentHtml') };
     const directionStyle = { direction: 'ltr' };
     const classNames = classnames('status__content', {
       'status__content--with-action': parseClick && !disabled,
-      'status__content--with-spoiler': status.get('spoiler_text').length > 0,
+      'status__content--with-spoiler': spoiler_present,
     });
 
     if (isRtl(status.get('search_index'))) {
       directionStyle.direction = 'rtl';
     }
 
-    if (status.get('spoiler_text').length > 0) {
+    if (spoiler_present) {
       let mentionsPlaceholder = '';
 
       const mentionLinks = status.get('mentions').map(item => (
@@ -302,11 +495,19 @@ export default class StatusContent extends React.PureComponent {
       )).reduce((aggregate, item) => [...aggregate, item, ' '], []);
 
       const toggleText = hidden ? [
-        <FormattedMessage
-          id='status.show_more'
-          defaultMessage='Show more'
-          key='0'
-        />,
+        article ? (
+          <FormattedMessage
+            id='status.show_article'
+            defaultMessage='Show article'
+            key='0'
+          />
+        ) : (
+          <FormattedMessage
+            id='status.show_more'
+            defaultMessage='Show more'
+            key='0'
+          />
+        ),
         mediaIcon ? (
           <Icon
             fixedWidth
@@ -330,15 +531,18 @@ export default class StatusContent extends React.PureComponent {
 
       return (
         <div className={classNames} tabIndex='0' onMouseDown={this.handleMouseDown} onMouseUp={this.handleMouseUp} ref={this.setRef}>
-          <p
+          {status_notice_wrapper}
+          <div
             style={{ marginBottom: hidden && status.get('mentions').isEmpty() ? '0px' : null }}
           >
-            <span dangerouslySetInnerHTML={spoilerContent} />
-            {' '}
-            <button tabIndex='0' className='status__content__spoiler-link' onClick={this.handleSpoilerClick}>
-              {toggleText}
-            </button>
-          </p>
+            {reblog_spoiler}
+            {spoiler}
+            <div class='spoiler-actions'>
+              <button tabIndex='0' className='status__content__spoiler-link' onClick={this.handleSpoilerClick}>
+                {toggleText}
+              </button>
+            </div>
+          </div>
 
           {mentionsPlaceholder}
 
@@ -354,6 +558,8 @@ export default class StatusContent extends React.PureComponent {
             {media}
           </div>
 
+          {footers}
+
         </div>
       );
     } else if (parseClick) {
@@ -366,6 +572,7 @@ export default class StatusContent extends React.PureComponent {
           tabIndex='0'
           ref={this.setRef}
         >
+          {status_notice_wrapper}
           <div
             ref={this.setContentsRef}
             key={`contents-${tagLinks}-${rewriteMentions}`}
@@ -374,6 +581,7 @@ export default class StatusContent extends React.PureComponent {
             tabIndex='0'
           />
           {media}
+          {footers}
         </div>
       );
     } else {
@@ -384,8 +592,10 @@ export default class StatusContent extends React.PureComponent {
           tabIndex='0'
           ref={this.setRef}
         >
+          {status_notice_wrapper}
           <div ref={this.setContentsRef} key={`contents-${tagLinks}`} className='status__content__text' dangerouslySetInnerHTML={content} tabIndex='0' />
           {media}
+          {footers}
         </div>
       );
     }

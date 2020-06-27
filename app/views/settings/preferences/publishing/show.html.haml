@@ -1,0 +1,23 @@
+- content_for :page_title do
+  = t('settings.preferences')
+
+- content_for :heading_actions do
+  = button_tag t('generic.save_changes'), class: 'button', form: 'edit_preferences'
+
+= simple_form_for current_user, url: settings_preferences_publishing_path, html: { method: :put, id: 'edit_preferences' } do |f|
+  = render 'shared/error_messages', object: current_user
+
+  %h4= t 'preferences.advanced_publishing'
+
+  .fields-row
+    .fields-group.fields-row__column.fields-row__column-6
+      = f.input :setting_manual_publish, as: :boolean, wrapper: :with_label
+      = f.input :setting_unpublish_on_delete, as: :boolean, wrapper: :with_label
+
+    .fields-group.fields-row__column.fields-row__column-6
+      = f.input :setting_publish_in, collection: Status::TIMER_VALUES, wrapper: :with_label, label_method: lambda { |m| I18n.t("timer.#{m}") }, required: false, include_blank: false, hint: false
+      = f.input :setting_unpublish_in, collection: Status::TIMER_VALUES, wrapper: :with_label, label_method: lambda { |m| I18n.t("timer.#{m}") }, required: false, include_blank: false, hint: false
+      = f.input :setting_unpublish_delete, as: :boolean, wrapper: :with_label
+
+  .actions
+    = f.button :button, t('generic.save_changes'), type: :submit

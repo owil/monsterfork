@@ -1,0 +1,11 @@
+.composer--publisher {
+  .clear {
+    background: darken($ui-base-color, 8%);
+    color: $secondary-text-color;
+    margin: 0 2px;
+    padding: 0;
+    width: 36px;
+    text-align: center;
+    float: left;
+  }
+}

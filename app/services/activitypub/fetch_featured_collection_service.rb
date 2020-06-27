@@ -22,9 +22,10 @@ class ActivityPub::FetchFeaturedCollectionService < BaseService
   private
 
   def process_items(items)
+    first_local_follower = @account.followers.local.random.first
     status_ids = items.map { |item| value_or_id(item) }
                       .reject { |uri| ActivityPub::TagManager.instance.local_uri?(uri) }
-                      .map { |uri| ActivityPub::FetchRemoteStatusService.new.call(uri) }
+                      .map { |uri| ActivityPub::FetchRemoteStatusService.new.call(uri, on_behalf_of: first_local_follower) }
                       .compact
                       .select { |status| status.account_id == @account.id }
                       .map(&:id)
@@ -43,7 +44,7 @@ class ActivityPub::FetchFeaturedCollectionService < BaseService
     StatusPin.where(account: @account, status_id: to_remove).delete_all unless to_remove.empty?
 
     to_add.each do |status_id|
-      StatusPin.create!(account: @account, status_id: status_id)
+      StatusPin.create(account: @account, status_id: status_id)
     end
   end
 

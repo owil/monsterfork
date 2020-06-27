@@ -6,6 +6,7 @@
 
   .fields-group
     = f.input :domain, wrapper: :with_label, label: t('admin.domain_blocks.domain'), required: true
+    = f.input :hidden, wrapper: :with_label, label: t('admin.domain_allows.hidden')
 
   .actions
     = f.button :button, t('admin.domain_allows.add_new'), type: :submit

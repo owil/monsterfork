@@ -19,7 +19,7 @@ class Api::V1::StatusesController < Api::BaseController
 
   def show
     @status = cache_collection([@status], Status).first
-    render json: @status, serializer: REST::StatusSerializer
+    render json: @status, serializer: REST::StatusSerializer, source_requested: truthy_param?(:source)
   end
 
   def context
@@ -31,7 +31,7 @@ class Api::V1::StatusesController < Api::BaseController
     @context = Context.new(ancestors: loaded_ancestors, descendants: loaded_descendants)
     statuses = [@status] + @context.ancestors + @context.descendants
 
-    render json: @context, serializer: REST::ContextSerializer, relationships: StatusRelationshipsPresenter.new(statuses, current_user&.account_id)
+    render json: @context, serializer: REST::ContextSerializer, relationships: StatusRelationshipsPresenter.new(statuses, current_user&.account_id), current_account_id: current_user&.account_id
   end
 
   def create
@@ -41,24 +41,80 @@ class Api::V1::StatusesController < Api::BaseController
                                          media_ids: status_params[:media_ids],
                                          sensitive: status_params[:sensitive],
                                          spoiler_text: status_params[:spoiler_text],
+                                         title: status_params[:title],
+                                         footer: status_params[:footer],
+                                         notify: status_params[:notify],
+                                         publish: status_params[:publish],
                                          visibility: status_params[:visibility],
                                          scheduled_at: status_params[:scheduled_at],
                                          application: doorkeeper_token.application,
                                          poll: status_params[:poll],
                                          content_type: status_params[:content_type],
+                                         tags: parse_tags_param(status_params[:tags]),
+                                         mentions: parse_mentions_param(status_params[:mentions]),
                                          idempotency: request.headers['Idempotency-Key'],
-                                         with_rate_limit: true)
+                                         with_rate_limit: true,
+                                         expires_at: status_params[:expires_at],
+                                         publish_at: status_params[:publish_at])
 
-    render json: @status, serializer: @status.is_a?(ScheduledStatus) ? REST::ScheduledStatusSerializer : REST::StatusSerializer
+    render json: @status,
+           serializer: (@status.is_a?(ScheduledStatus) ? REST::ScheduledStatusSerializer : REST::StatusSerializer),
+           source_requested: truthy_param?(:source)
+  end
+
+  def update
+    @status = Status.where(account_id: current_user.account).find(params[:id])
+    authorize @status, :destroy?
+
+    @status = PostStatusService.new.call(current_user.account,
+                                         text: status_params[:status],
+                                         thread: @thread,
+                                         media_ids: status_params[:media_ids],
+                                         sensitive: status_params[:sensitive],
+                                         spoiler_text: status_params[:spoiler_text],
+                                         title: status_params[:title],
+                                         footer: status_params[:footer],
+                                         notify: status_params[:notify],
+                                         publish: status_params[:publish],
+                                         visibility: status_params[:visibility],
+                                         scheduled_at: status_params[:scheduled_at],
+                                         application: doorkeeper_token.application,
+                                         poll: status_params[:poll],
+                                         content_type: status_params[:content_type],
+                                         status: @status,
+                                         tags: parse_tags_param(status_params[:tags]),
+                                         mentions: parse_mentions_param(status_params[:mentions]),
+                                         idempotency: request.headers['Idempotency-Key'],
+                                         with_rate_limit: true,
+                                         expires_at: status_params[:expires_at],
+                                         publish_at: status_params[:publish_at])
+
+    render json: @status,
+           serializer: (@status.is_a?(ScheduledStatus) ? REST::ScheduledStatusSerializer : REST::StatusSerializer),
+           source_requested: truthy_param?(:source)
   end
 
   def destroy
     @status = Status.where(account_id: current_user.account).find(params[:id])
     authorize @status, :destroy?
 
-    @status.discard
-    RemovalWorker.perform_async(@status.id, redraft: true)
-    @status.account.statuses_count = @status.account.statuses_count - 1
+    if !(current_user.setting_unpublish_on_delete && @status.published?) || truthy_param?(:redraft)
+      @status.discard
+      RemovalWorker.perform_async(@status.id, redraft: true)
+      @status.account.statuses_count = @status.account.statuses_count - 1
+    else
+      RemovalWorker.perform_async(@status.id, redraft: true, unpublish: true)
+      tag_script = "#!redraft #{@status.id}\n"
+      @status.text = "#{tag_script}#{@status.text.sub(/^\s*#!redraft \d+\n/, '')}"
+      @status.original_text = "#{tag_script}#{@status.original_text.sub(/^\s*#!redraft \d+\n/, '')}"
+    end
+
+    @status.local_only = @status.originally_local_only?
+    unless @status.original_text.match?(/^\s*#!\s*federate\b/i)
+      tag_script = "#!federate #{@status.originally_local_only? ? 'off' : 'on'}\n"
+      @status.text.prepend(tag_script)
+      @status.original_text.prepend(tag_script)
+    end
 
     render json: @status, serializer: REST::StatusSerializer, source_requested: true
   end
@@ -84,9 +140,17 @@ class Api::V1::StatusesController < Api::BaseController
       :in_reply_to_id,
       :sensitive,
       :spoiler_text,
+      :title,
+      :footer,
+      :notify,
+      :publish,
       :visibility,
       :scheduled_at,
       :content_type,
+      :expires_at,
+      :publish_at,
+      tags: [],
+      mentions: [],
       media_ids: [],
       poll: [
         :multiple,
@@ -99,5 +163,27 @@ class Api::V1::StatusesController < Api::BaseController
 
   def pagination_params(core_params)
     params.slice(:limit).permit(:limit).merge(core_params)
+  end
+
+  def parse_tags_param(tags_param)
+    return if tags_param.blank?
+
+    tags_param.select { |value| value.respond_to?(:to_str) && value.present? }
+  end
+
+  def parse_mentions_param(mentions_param)
+    return if mentions_param.blank?
+
+    mentions_param.map do |value|
+      next if value.blank?
+
+      value = value.split('@', 3) if value.respond_to?(:to_str)
+      next unless value.is_a?(Enumerable)
+
+      mentioned_account = Account.find_by(username: value[0], domain: value[1])
+      next if mentioned_account.nil? || mentioned_account.suspended?
+
+      mentioned_account
+    end
   end
 end

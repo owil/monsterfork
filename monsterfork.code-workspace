@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"typescript.surveys.enabled": false,
+		"javascript.format.enable": false
+	}
+}

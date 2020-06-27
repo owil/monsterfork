@@ -18,6 +18,7 @@ import {
 } from './announcements';
 import { fetchFilters } from './filters';
 import { getLocale } from '../locales';
+import { resetCompose } from '../actions/compose';
 
 const { messages } = getLocale();
 
@@ -95,6 +96,10 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
           break;
         case 'announcement.delete':
           dispatch(deleteAnnouncement(data.payload));
+          break;
+        case 'refresh':
+          dispatch(resetCompose());
+          window.location.reload();
           break;
         }
       },

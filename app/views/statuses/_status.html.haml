@@ -27,19 +27,12 @@
     .status__prepend
       .status__prepend-icon-wrapper
         %i.status__prepend-icon.fa.fa-fw.fa-retweet
-      %span
-        = link_to ActivityPub::TagManager.instance.url_for(status.account), class: 'status__display-name muted' do
-          %bdi
-            %strong.emojify= display_name(status.account, custom_emojify: true)
-        = t('stream_entries.reblogged')
   - elsif pinned
     .status__prepend
       .status__prepend-icon-wrapper
         %i.status__prepend-icon.fa.fa-fw.fa-thumb-tack
-      %span
-        = t('stream_entries.pinned')
 
-  = render (centered ? 'statuses/detailed_status' : 'statuses/simple_status'), status: status.proper, autoplay: autoplay
+  = render (centered ? 'statuses/detailed_status' : 'statuses/simple_status'), status: status.proper, autoplay: autoplay, parent_status: status
 
 - if include_threads
   - if @since_descendant_thread_id
