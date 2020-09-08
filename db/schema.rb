@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_09_04_201028) do
+ActiveRecord::Schema.define(version: 2020_09_07_195410) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -990,12 +990,14 @@ ActiveRecord::Schema.define(version: 2020_09_04_201028) do
     t.string "username"
     t.string "kobold"
     t.string "webauthn_id"
+    t.index "lower((username)::text)", name: "index_on_users_username_lowercase", unique: true
     t.index ["account_id"], name: "index_users_on_account_id"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["created_by_application_id"], name: "index_users_on_created_by_application_id"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["remember_token"], name: "index_users_on_remember_token", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["username"], name: "index_users_on_username", unique: true
   end
 
   create_table "web_push_subscriptions", force: :cascade do |t|

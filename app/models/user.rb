@@ -101,6 +101,7 @@ class User < ApplicationRecord
   scope :matches_email, ->(value) { where(arel_table[:email].matches("#{value}%")) }
   scope :matches_ip, ->(value) { left_joins(:session_activations).where('users.current_sign_in_ip <<= ?', value).or(left_joins(:session_activations).where('users.last_sign_in_ip <<= ?', value)).or(left_joins(:session_activations).where('session_activations.ip <<= ?', value)) }
   scope :emailable, -> { confirmed.enabled.joins(:account).merge(Account.searchable) }
+  scope :lower_username, ->(username) { where('lower(users.username) = lower(?)', username) }
 
   before_validation :sanitize_languages
   before_create :set_approved
@@ -464,5 +465,15 @@ class User < ApplicationRecord
   def kobold_hash
     value = [account.username, username.downcase, email, invite_request.text].compact.map(&:downcase).join("\u{F0666}")
     Digest::SHA512.hexdigest(value).upcase
+  end
+
+  class << self
+    def find_by_lower_username(username)
+      lower_username(username).first
+    end
+
+    def find_by_lower_username!(username)
+      lower_username(username).first!
+    end
   end
 end
