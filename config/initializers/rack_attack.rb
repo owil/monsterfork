@@ -105,6 +105,10 @@ class Rack::Attack
     req.session[:attempt_user_id] || req.params.dig('user', 'email').presence if req.post? && req.path == '/auth/sign_in'
   end
 
+  throttle('throttle_matrix_auth_attempts/ip', limit: 5, period: 1.minute) do |req|
+    req.remote_ip if req.path == '/_matrix-internal/identity/v1/check_credentials'
+  end
+
   self.throttled_response = lambda do |env|
     now        = Time.now.utc
     match_data = env['rack.attack.match_data']

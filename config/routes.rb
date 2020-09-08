@@ -531,6 +531,14 @@ Rails.application.routes.draw do
     end
   end
 
+  namespace :matrix, path: '_matrix-internal' do
+    namespace :identity do
+      namespace :v1 do
+        resource :check_credentials, only: [:create]
+      end
+    end
+  end
+
   get '/web/(*any)', to: 'home#index', as: :web
 
   get '/about',        to: 'about#show'
