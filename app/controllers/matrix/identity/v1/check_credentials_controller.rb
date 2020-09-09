@@ -3,11 +3,11 @@
 class Matrix::Identity::V1::CheckCredentialsController < Matrix::BaseController
   def create
     matrix_profile = matrix_profile_json
-    return render json: fail_json, status: 403 if matrix_profile.blank?
+    return render json: fail_json if matrix_profile.blank?
 
     render json: matrix_profile
   rescue ActionController::ParameterMissing, ActiveRecord::RecordNotFound
-    render json: fail_json, status: 403
+    render json: fail_json
   end
 
   private
