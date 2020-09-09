@@ -33,7 +33,7 @@ class Matrix::Identity::V1::CheckCredentialsController < Matrix::BaseController
     {
       auth: {
         success: true,
-        mxid: user_params[:id],
+        mxid: "@#{username}:#{domain}",
         profile: {
           display_name: user.account.display_name.presence || user.username,
           three_pids: [
