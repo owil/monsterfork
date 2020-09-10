@@ -41,6 +41,11 @@ module Mastodon
         end
       end
 
+      say('Scheduling account defederation messages to be sent to target domains...')
+      DefederateDomainService.new.call(scope.pluck(:domain).uniq)
+      say('Done!', :green)
+
+      say('Deleting accounts from target domains...')
       processed, = parallelize_with_progress(scope) do |account|
         SuspendAccountService.new.call(account, reserve_username: false, skip_side_effects: true) unless options[:dry_run]
       end

@@ -23,6 +23,7 @@ class BlockDomainService < BaseService
     if domain_block.silence?
       silence_accounts!
     elsif domain_block.suspend?
+      DefederateDomainService.new.call(domain_block.domain)
       suspend_accounts!
     end
 
