@@ -108,7 +108,7 @@ class Status < ApplicationRecord
   scope :local,  -> { where(local: true).or(where(uri: nil)) }
 
   scope :with_accounts, ->(ids) { where(id: ids).includes(:account) }
-  scope :without_replies, -> { where('statuses.reply = FALSE OR statuses.in_reply_to_account_id = statuses.account_id') }
+  scope :without_replies, -> { where(reply: false) }
   scope :without_reblogs, -> { where('statuses.reblog_of_id IS NULL') }
   scope :with_public_visibility, -> { where(visibility: :public, published: true) }
   scope :distributable, -> { where(visibility: [:public, :unlisted], published: true) }
@@ -139,7 +139,7 @@ class Status < ApplicationRecord
   scope :locally_reblogged, -> { where(id: Status.unscoped.local.reblogs.select(:reblog_of_id)) }
   scope :conversations_by, ->(account) { joins(:conversation).where(conversations: { account: account }) }
   scope :mentioning_account, ->(account) { joins(:mentions).where(mentions: { account: account }) }
-  scope :replies, -> { where(reply: true).where('statuses.in_reply_to_account_id != statuses.account_id') }
+  scope :replies, -> { where(reply: true) }
   scope :expired, -> { published.where('statuses.expires_at IS NOT NULL AND statuses.expires_at < ?', Time.now.utc) }
   scope :ready_to_publish, -> { unpublished.where('statuses.publish_at IS NOT NULL AND statuses.publish_at < ?', Time.now.utc) }
 
