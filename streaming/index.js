@@ -578,7 +578,7 @@ const startWorker = (workerId) => {
         }
 
         const queries = [
-          client.query(`SELECT 1 FROM blocks WHERE (account_id = $1 AND target_account_id IN (${placeholders(targetAccountIds, 2)})) OR (account_id = $2 AND target_account_id = $1) UNION SELECT 1 FROM mutes WHERE account_id = $1 AND target_account_id IN (${placeholders(targetAccountIds, 2)})`, [req.accountId, unpackedPayload.account.id].concat(targetAccountIds)),
+          client.query(`SELECT 1 FROM blocks WHERE (account_id = $1 AND target_account_id IN (${placeholders(targetAccountIds, 4)})) OR (account_id = $2 AND target_account_id = $1) UNION SELECT 1 FROM mutes WHERE account_id = $1 AND target_account_id IN (${placeholders(targetAccountIds, 4)}) UNION SELECT 1 FROM conversation_mutes WHERE account_id = $1 AND conversation_id = $3 UNION SELECT 1 FROM status_mutes WHERE account_id = $1 AND status_id = $4`, [req.accountId, unpackedPayload.account.id, unpackedPayload.conversation_id, unpackedPayload.id].concat(targetAccountIds)),
         ];
 
         if (accountDomain) {

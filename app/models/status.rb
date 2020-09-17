@@ -144,7 +144,7 @@ class Status < ApplicationRecord
   scope :ready_to_publish, -> { unpublished.where('statuses.publish_at IS NOT NULL AND statuses.publish_at < ?', Time.now.utc) }
 
   scope :not_hidden_by_account, ->(account) do
-    left_outer_joins(:mutes, :conversation_mute).where('(status_mutes.account_id IS NULL OR status_mutes.account_id != ?) AND (conversation_mutes.account_id IS NULL OR (conversation_mutes.account_id != ? AND conversation_mutes.hidden = TRUE))', account.id, account.id)
+    left_outer_joins(:mutes, :conversation_mute).where('(status_mutes.account_id IS NULL OR status_mutes.account_id != ?) AND (conversation_mutes.account_id IS NULL OR conversation_mutes.account_id != ?)', account.id, account.id)
   end
 
   cache_associated :application,
@@ -482,10 +482,6 @@ class Status < ApplicationRecord
 
     def mutes_map(conversation_ids, account_id)
       ConversationMute.select('conversation_id').where(conversation_id: conversation_ids).where(account_id: account_id).each_with_object({}) { |m, h| h[m.conversation_id] = true }
-    end
-
-    def hidden_conversations_map(conversation_ids, account_id)
-      ConversationMute.select('conversation_id').where(conversation_id: conversation_ids, hidden: true).where(account_id: account_id).each_with_object({}) { |m, h| h[m.conversation_id] = true }
     end
 
     def hidden_statuses_map(status_ids, account_id)

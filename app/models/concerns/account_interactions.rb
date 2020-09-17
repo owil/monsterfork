@@ -138,10 +138,8 @@ module AccountInteractions
     mute
   end
 
-  def mute_conversation!(conversation, hidden: false)
-    mute = conversation_mutes.find_or_create_by!(conversation: conversation)
-    mute.update(hidden: hidden) if hidden.present? && mute.hidden? != hidden
-    mute
+  def mute_conversation!(conversation)
+    conversation_mutes.find_or_create_by!(conversation: conversation)
   end
 
   def block_domain!(other_domain)
@@ -200,10 +198,6 @@ module AccountInteractions
 
   def muting_conversation?(conversation)
     conversation_mutes.where(conversation: conversation).exists?
-  end
-
-  def hiding_conversation?(conversation)
-    conversation_mutes.where(conversation: conversation, hidden: true).exists?
   end
 
   def muting_notifications?(other_account)

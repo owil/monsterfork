@@ -22,7 +22,6 @@ class REST::StatusSerializer < ActiveModel::Serializer
 
   attribute :published if :local?
   attribute :hidden, if: :current_user?
-  attribute :conversation_hidden, if: :current_user?
   attribute :notify, if: :locally_owned?
   attribute :title?, key: :article
   attribute :article_content, if: :title?
@@ -137,14 +136,6 @@ class REST::StatusSerializer < ActiveModel::Serializer
       instance_options[:relationships].mutes_map[object.conversation_id] || false
     else
       current_user.account.muting_conversation?(object.conversation)
-    end
-  end
-
-  def conversation_hidden
-    if instance_options && instance_options[:relationships]
-      instance_options[:relationships].hidden_conversations_map[object.conversation_id] || false
-    else
-      current_user.account.hiding_conversation?(object.conversation)
     end
   end
 

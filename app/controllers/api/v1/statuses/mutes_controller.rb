@@ -9,7 +9,7 @@ class Api::V1::Statuses::MutesController < Api::BaseController
   before_action :set_conversation
 
   def create
-    MuteConversationService.new.call(current_account, @status.conversation, hidden: truthy_param?(:hide))
+    MuteConversationService.new.call(current_account, @status.conversation)
     @mutes_map = { @conversation.id => true }
 
     render json: @status, serializer: REST::StatusSerializer
