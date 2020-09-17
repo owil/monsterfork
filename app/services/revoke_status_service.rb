@@ -74,22 +74,16 @@ class RevokeStatusService < BaseService
     return if @status.distributable?
 
     redis.publish('timeline:public', @payload)
-    if @status.local?
-      redis.publish('timeline:public:local', @payload)
-    else
-      redis.publish('timeline:public:remote', @payload)
-    end
+    redis.publish('timeline:public:local', @payload) if @status.local?
+    redis.publish('timeline:public:remote', @payload)
   end
 
   def remove_from_media
     return if @status.distributable?
 
     redis.publish('timeline:public:media', @payload)
-    if @status.local?
-      redis.publish('timeline:public:local:media', @payload)
-    else
-      redis.publish('timeline:public:remote:media', @payload)
-    end
+    redis.publish('timeline:public:local:media', @payload) if @status.local?
+    redis.publish('timeline:public:remote:media', @payload)
   end
 
   def remove_from_direct

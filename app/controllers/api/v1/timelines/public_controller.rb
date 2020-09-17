@@ -42,7 +42,7 @@ class Api::V1::Timelines::PublicController < Api::BaseController
 
   def public_timeline_statuses
     local = truthy_param?(:local) ? true : :local_reblogs
-    Status.as_public_timeline(current_account, truthy_param?(:remote) ? :remote : local)
+    Status.as_public_timeline(current_account, truthy_param?(:remote) ? nil : local)
   end
 
   def insert_pagination_headers

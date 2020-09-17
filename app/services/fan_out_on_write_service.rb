@@ -102,11 +102,8 @@ class FanOutOnWriteService < BaseService
     Redis.current.set(key, 1, ex: 2.hours)
 
     Redis.current.publish('timeline:public', @payload) if status.local? || !tavern
-    if status.local?
-      Redis.current.publish('timeline:public:local', @payload)
-    else
-      Redis.current.publish('timeline:public:remote', @payload)
-    end
+    Redis.current.publish('timeline:public:local', @payload) if status.local?
+    Redis.current.publish('timeline:public:remote', @payload)
   end
 
   def deliver_to_media(status, tavern = false)
@@ -116,11 +113,8 @@ class FanOutOnWriteService < BaseService
     Rails.logger.debug "Delivering status #{status.id} to media timeline"
 
     Redis.current.publish('timeline:public:media', @payload) if status.local? || !tavern
-    if status.local?
-      Redis.current.publish('timeline:public:local:media', @payload)
-    else
-      Redis.current.publish('timeline:public:remote:media', @payload)
-    end
+    Redis.current.publish('timeline:public:local:media', @payload) if status.local?
+    Redis.current.publish('timeline:public:remote:media', @payload)
   end
 
   def deliver_to_direct_timelines(status)
