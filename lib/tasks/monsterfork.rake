@@ -26,4 +26,14 @@ namespace :monsterfork do
     ActivityPub::UpdateDistributionWorker.new.perform(Account.representative.id)
     Rails.logger.info('Done!')
   end
+
+  desc 'Update the accounts of allow-listed application and instance actors'
+  task refresh_application_actors: :environment  do
+    Account.remote.without_suspended.where(actor_type: 'Application').find_each do |account|
+      Rails.logger.info("Refetching application actor: #{account.acct}")
+      account.update!(last_webfingered_at: nil)
+      ResolveAccountService.new.call(account)
+    end
+    Rails.logger.info('Done!')
+  end
 end
