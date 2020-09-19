@@ -19,4 +19,11 @@ namespace :monsterfork do
       count += 1
     end
   end
+
+  desc '(Re-)announce instance actor to allow-listed servers'
+  task announce_instance_actor: :environment  do
+    Rails.logger.info('Announcing instance actor to all allowed servers...')
+    ActivityPub::UpdateDistributionWorker.new.perform(Account.representative.id)
+    Rails.logger.info('Done!')
+  end
 end
