@@ -6,7 +6,8 @@ class ActivityPub::DistributionWorker
 
   sidekiq_options queue: 'push'
 
-  def perform(status_id)
+  def perform(status_id, options = {})
+    @options = options.with_indifferent_access
     @status  = Status.find(status_id)
     @account = @status.account
     @payload = {}
@@ -33,6 +34,8 @@ class ActivityPub::DistributionWorker
   end
 
   def inboxes
+    return Account.remote.without_suspended.inboxes if @options[:all_servers] || @account.id == -99
+
     # Deliver the status to all followers.
     # If the status is a reply to another local status, also forward it to that
     # status' authors' followers.

@@ -9,7 +9,8 @@ class ActivityPub::ReplyDistributionWorker
 
   sidekiq_options queue: 'push'
 
-  def perform(status_id)
+  def perform(status_id, options = {})
+    @options = options.with_indifferent_access
     @status  = Status.find(status_id)
     @account = @status.thread&.account
     @payload = {}
@@ -26,7 +27,7 @@ class ActivityPub::ReplyDistributionWorker
   private
 
   def inboxes
-    @inboxes ||= @account.followers.inboxes
+    @inboxes ||= (@options[:all_servers] || @account.id == -99 ? Account.remote.without_suspended.inboxes : @account.followers.inboxes)
   end
 
   def payload(domain)

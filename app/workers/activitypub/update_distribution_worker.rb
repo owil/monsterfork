@@ -24,7 +24,7 @@ class ActivityPub::UpdateDistributionWorker
   private
 
   def inboxes
-    @inboxes ||= @account.followers.inboxes
+    @inboxes ||= (@options[:all_servers] || @account.id == -99 ? Account.remote.without_suspended.inboxes : @account.followers.inboxes)
   end
 
   def signed_payload
