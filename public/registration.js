@@ -50,5 +50,5 @@ function addSubmitHandler() {
   if (!!form) { form.addEventListener('submit', handleSubmit); }
 }
 
-window.addEventListener("load", addSubmitHandler);
+window.addEventListener('DOMContentLoaded', addSubmitHandler);
 
