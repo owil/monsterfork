@@ -121,6 +121,7 @@ Rails.application.routes.draw do
       resource :other, only: [:show, :update], controller: :other
       resource :filters, only: [:show, :update], controller: :filters
       resource :publishing, only: [:show, :update], controller: :publishing
+      resource :privacy, only: [:show, :update], controller: :privacy
     end
 
     resource :import, only: [:show, :create]

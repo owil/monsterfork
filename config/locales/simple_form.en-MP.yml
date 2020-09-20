@@ -29,6 +29,7 @@ en-MP:
         setting_filter_to_unknown: Do not show replies to unfollowed accounts on your home timeline.  Takes effect for newly-pushed items.
         setting_filter_from_unknown: Do not show boosts from unfollowed accounts on your home timeline.  Takes effect for newly-pushed items.
         setting_manual_publish: This allows you to draft, proofread, and edit your roars before publishing them.  You can publish a roar from its <strong>action menu</strong> (the three dots).
+        setting_rss_disabled: Improves privacy by turning off your account's public RSS feed.
         setting_show_application: The application you use to toot will be displayed in the detailed view of your roars
         setting_skin: Reskins the selected UI flavour
         setting_unpublish_on_delete: When enabled, deleting a published roar will unpublish it then make it local-only. Deleting an unpublished roar will permanently destroy it.
@@ -67,6 +68,7 @@ en-MP:
         setting_boost_every: Automatically queue and space out boosts
         setting_boost_jitter: Add a random delay up to
         setting_boost_random: Boost in random order
+        setting_rss_disabled: Disable RSS feed
         setting_unpublish_delete: Delete after unpublishing
         setting_unpublish_in: Then unpublish after
         setting_unpublish_on_delete: Unpublish on delete

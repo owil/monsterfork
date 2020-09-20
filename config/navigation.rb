@@ -12,10 +12,11 @@ SimpleNavigation::Configuration.run do |navigation|
 
     n.item :preferences, safe_join([fa_icon('cog fw'), t('settings.preferences')]), settings_preferences_url, if: -> { current_user.functional? } do |s|
       s.item :appearance, safe_join([fa_icon('desktop fw'), t('settings.appearance')]), settings_preferences_appearance_url
-      s.item :notifications, safe_join([fa_icon('bell fw'), t('settings.notifications')]), settings_preferences_notifications_url
-      s.item :filters, safe_join([fa_icon('filter fw'), t('preferences.filters')]), settings_preferences_filters_url
+      s.item :other, safe_join([fa_icon('cog fw'), t('preferences.posting_defaults')]), settings_preferences_other_url
+      s.item :privacy, safe_join([fa_icon('lock fw'), t('preferences.privacy')]), settings_preferences_privacy_url
       s.item :publishing, safe_join([fa_icon('pencil-square-o fw'), t('preferences.publishing')]), settings_preferences_publishing_url
-      s.item :other, safe_join([fa_icon('cog fw'), t('preferences.other')]), settings_preferences_other_url
+      s.item :notifications, safe_join([fa_icon('bell fw'), t('settings.notifications')]), settings_preferences_notifications_url
+      s.item :filters, safe_join([fa_icon('filter fw'), t('preferences.filters')]), settings_preferences_filters_url, highlights_on: %r{/settings/preferences/filters}
     end
 
     n.item :flavours, safe_join([fa_icon('paint-brush fw'), t('settings.flavours')]), settings_flavours_url do |flavours|
@@ -25,7 +26,7 @@ SimpleNavigation::Configuration.run do |navigation|
     end
 
     n.item :relationships, safe_join([fa_icon('users fw'), t('settings.relationships')]), relationships_url, if: -> { current_user.functional? }
-    n.item :filters, safe_join([fa_icon('filter fw'), t('filters.index.title')]), filters_path, highlights_on: %r{/filters}, if: -> { current_user.functional? }
+    n.item :filters, safe_join([fa_icon('filter fw'), t('filters.index.title')]), filters_path, highlights_on: %r{^/filters}, if: -> { current_user.functional? }
 
     n.item :security, safe_join([fa_icon('lock fw'), t('settings.account')]), edit_user_registration_url do |s|
       s.item :password, safe_join([fa_icon('lock fw'), t('settings.account_settings')]), edit_user_registration_url, highlights_on: %r{/auth/edit|/settings/delete|/settings/migration|/settings/aliases}

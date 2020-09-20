@@ -43,7 +43,7 @@ class AccountsController < ApplicationController
       end
 
       format.rss do
-        return forbidden if unauthorized?
+        return render xml: '', status: 404 if rss_disabled? || unauthorized?
 
         expires_in 1.minute, public: !current_account?
 
@@ -197,5 +197,9 @@ class AccountsController < ApplicationController
 
   def unauthorized?
     @unauthorized ||= blocked? || (@account.private? && !following?(@account))
+  end
+
+  def rss_disabled?
+    current_user.setting_rss_disabled
   end
 end

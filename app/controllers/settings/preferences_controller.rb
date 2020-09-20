@@ -77,6 +77,7 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_filter_to_unknown,
       :setting_filter_from_unknown,
       :setting_unpublish_on_delete,
+      :setting_rss_disabled,
       notification_emails: %i(follow follow_request reblog favourite mention digest report pending_account trending_tag),
       interactions: %i(must_be_follower must_be_following must_be_following_dm)
     )

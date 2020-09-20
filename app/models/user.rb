@@ -123,8 +123,8 @@ class User < ApplicationRecord
            :style_css_profile_errors, :style_css_webapp, :style_css_webapp_errors,
            :style_wide_media,
            :publish_in, :unpublish_in, :unpublish_delete, :boost_every, :boost_jitter,
-           :boost_random,
-           :filter_to_unknown, :filter_from_unknown, :unpublish_on_delete,
+           :boost_random, :filter_to_unknown, :filter_from_unknown, :unpublish_on_delete,
+           :rss_disabled,
            to: :settings, prefix: :setting, allow_nil: false
 
   attr_reader :invite_code, :sign_in_token_attempt
