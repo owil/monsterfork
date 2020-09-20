@@ -78,5 +78,8 @@ module AccountAssociations
 
     # Collection items
     has_many :collection_items, inverse_of: :account, dependent: :destroy
+
+    # Custom emojis
+    has_many :custom_emojis, inverse_of: :account, dependent: :nullify
   end
 end

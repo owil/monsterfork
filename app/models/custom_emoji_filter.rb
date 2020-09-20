@@ -5,13 +5,16 @@ class CustomEmojiFilter
     local
     remote
     by_domain
+    claimed
+    unclaimed
     shortcode
   ).freeze
 
   attr_reader :params
 
-  def initialize(params)
+  def initialize(params, account)
     @params = params
+    @account = account
   end
 
   def results
@@ -36,6 +39,10 @@ class CustomEmojiFilter
       CustomEmoji.remote
     when 'by_domain'
       CustomEmoji.where(domain: value.strip.downcase)
+    when 'claimed'
+      CustomEmoji.where(account: @account)
+    when 'unclaimed'
+      CustomEmoji.where(account: nil)
     when 'shortcode'
       CustomEmoji.search(value.strip)
     else

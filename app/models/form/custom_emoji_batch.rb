@@ -24,13 +24,17 @@ class Form::CustomEmojiBatch
       copy!
     when 'delete'
       delete!
+    when 'claim'
+      claim!
+    when 'unclaim'
+      unclaim!
     end
   end
 
   private
 
-  def custom_emojis
-    @custom_emojis ||= CustomEmoji.where(id: custom_emoji_ids)
+  def custom_emojis(include_all = false)
+    @custom_emojis ||= (include_all || current_account&.user&.staff? ? CustomEmoji.where(id: custom_emoji_ids) : CustomEmoji.local.where(id: custom_emoji_ids, account: current_account))
   end
 
   def update!
@@ -40,9 +44,11 @@ class Form::CustomEmojiBatch
       if category_id.present?
         CustomEmojiCategory.find(category_id)
       elsif category_name.present?
-        CustomEmojiCategory.find_or_create_by!(name: category_name)
+        CustomEmojiCategory.find_or_create_by!(name: current_account&.user&.staff? ? category_name.strip : "(@#{current_account.username}) #{category_name}".rstrip)
       end
     end
+
+    return if category.name.start_with?('(@') && !category.name.start_with?("(@#{current_account.username}) ")
 
     custom_emojis.each do |custom_emoji|
       custom_emoji.update(category_id: category&.id)
@@ -87,10 +93,10 @@ class Form::CustomEmojiBatch
   end
 
   def copy!
-    custom_emojis.each { |custom_emoji| authorize(custom_emoji, :copy?) }
+    custom_emojis(true).each { |custom_emoji| authorize(custom_emoji, :copy?) }
 
     custom_emojis.each do |custom_emoji|
-      copied_custom_emoji = custom_emoji.copy!
+      copied_custom_emoji = custom_emoji.copy!(current_account)
       log_action :create, copied_custom_emoji
     end
   end
@@ -101,6 +107,29 @@ class Form::CustomEmojiBatch
     custom_emojis.each do |custom_emoji|
       custom_emoji.destroy
       log_action :destroy, custom_emoji
+    end
+  end
+
+  def claim!
+    custom_emojis(true).each { |custom_emoji| authorize(custom_emoji, :claim?) }
+
+    custom_emojis.each do |custom_emoji|
+      if custom_emoji.local?
+        custom_emoji.update(account: current_account)
+        log_action :update, custom_emoji
+      else
+        copied_custom_emoji = custom_emoji.copy!(current_account)
+        log_action :create, copied_custom_emoji
+      end
+    end
+  end
+
+  def unclaim!
+    custom_emojis.each { |custom_emoji| authorize(custom_emoji, :unclaim?) }
+
+    custom_emojis.each do |custom_emoji|
+      custom_emoji.update(account: nil)
+      log_action :update, custom_emoji
     end
   end
 end

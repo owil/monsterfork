@@ -14,6 +14,9 @@ en-MP:
       silenced: "Posts from these servers will be hidden in public timelines and no notifications will be generated from their users' interactions, unless you are following them or vise-versa.  These are typically set for curation purposes rather than "
   accounts:
     endorsements_hint: You can endorse creatures you follow from the web interface, and they will show up here.
+    location:
+      claimed: Claimed
+      unclaimed: Unclaimed
     people_followed_by: Creatures whom %{name} follows
     people_who_follow: Creatures who follow %{name}
     pin_errors:
@@ -34,6 +37,12 @@ en-MP:
       actions:
         update_status: "%{name} updated roar by %{target}"
       deleted_status: "(deleted roar)"
+    custom_emojis:
+      claim: Claim
+      owner: Contributor
+      ownership_warning: "NOTE: You can only make changes to custom emoji that you upload or copy unless you are a moderator."
+      unclaim: Unclaim
+      unclaimed: (unclaimed)
     dashboard:
       pending_users: creatures waiting for review
       feature_hcaptcha: hCaptcha

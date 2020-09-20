@@ -3,7 +3,9 @@
 
 - if can?(:create, :custom_emoji)
   - content_for :heading_actions do
-    = link_to t('admin.custom_emojis.upload'), new_admin_custom_emoji_path, class: 'button'
+    = link_to t('admin.custom_emojis.upload'), new_custom_emoji_path, class: 'button'
+
+%p= t('admin.custom_emojis.ownership_warning')
 
 .filters
   .filter-subset
@@ -11,17 +13,27 @@
     %ul
       %li= filter_link_to t('admin.accounts.location.all'), local: nil, remote: nil
       %li
-        - if selected? local: '1', remote: nil
-          = filter_link_to t('admin.accounts.location.local'), {local: nil, remote: nil}, {local: '1', remote: nil}
+        - if selected? local: '1', remote: nil, claimed: nil, unclaimed: nil
+          = filter_link_to t('admin.accounts.location.local'), {local: nil, remote: nil, claimed: nil, unclaimed: nil}, {local: '1', remote: nil, claimed: nil, unclaimed: nil}
         - else
-          = filter_link_to t('admin.accounts.location.local'), local: '1', remote: nil
+          = filter_link_to t('admin.accounts.location.local'), local: '1', remote: nil, claimed: nil, unclaimed: nil
       %li
-        - if selected? remote: '1', local: nil
-          = filter_link_to t('admin.accounts.location.remote'), {remote: nil, local: nil}, {remote: '1', local: nil}
+        - if selected? remote: '1', local: nil, claimed: nil, unclaimed: nil
+          = filter_link_to t('admin.accounts.location.remote'), {remote: nil, local: nil, claimed: nil, unclaimed: nil}, {remote: '1', local: nil, claimed: nil, unclaimed: nil}
         - else
-          = filter_link_to t('admin.accounts.location.remote'), remote: '1', local: nil
+          = filter_link_to t('admin.accounts.location.remote'), remote: '1', local: nil, claimed: nil, unclained: nil
+      %li
+        - if selected? local: '1', remote: nil, claimed: '1', unclaimed: nil
+          = filter_link_to t('admin.accounts.location.claimed'), {local: '1', remote: nil, claimed: nil, unclaimed: nil}, {local: '1', remote: nil, claimed: '1', unclaimed: nil}
+        - else
+          = filter_link_to t('admin.accounts.location.claimed'), local: '1', remote: nil, claimed: '1', unclaimed: nil
+      %li
+        - if selected? local: '1', remote: nil, claimed: nil, unclaimed: '1'
+          = filter_link_to t('admin.accounts.location.unclaimed'), {local: '1', remote: nil, claimed: nil, unclaimed: nil}, {local: '1', remote: nil, claimed: nil, unclaimed: '1'}
+        - else
+          = filter_link_to t('admin.accounts.location.unclaimed'), local: '1', remote: nil, claimed: nil, unclaimed: '1'
 
-= form_tag admin_custom_emojis_url, method: 'GET', class: 'simple_form' do
+= form_tag custom_emojis_url, method: 'GET', class: 'simple_form' do
   .fields-group
     - CustomEmojiFilter::KEYS.each do |key|
       = hidden_field_tag key, params[key] if params[key].present?
@@ -32,9 +44,9 @@
 
     .actions
       %button.button= t('admin.accounts.search')
-      = link_to t('admin.accounts.reset'), admin_custom_emojis_path, class: 'button negative'
+      = link_to t('admin.accounts.reset'), custom_emojis_path, class: 'button negative'
 
-= form_for(@form, url: batch_admin_custom_emojis_path) do |f|
+= form_for(@form, url: batch_custom_emojis_path) do |f|
   = hidden_field_tag :page, params[:page] || 1
 
   - CustomEmojiFilter::KEYS.each do |key|
@@ -45,6 +57,10 @@
       %label.batch-table__toolbar__select.batch-checkbox-all
         = check_box_tag :batch_checkbox_all, nil, false
       .batch-table__toolbar__actions
+        = f.button safe_join([fa_icon('lock'), t('admin.custom_emojis.claim')]), name: :claim, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
+
+        = f.button safe_join([fa_icon('unlock'), t('admin.custom_emojis.unclaim')]), name: :unclaim, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
+
         - if params[:local] == '1'
           = f.button safe_join([fa_icon('save'), t('generic.save_changes')]), name: :update, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
 
@@ -56,10 +72,9 @@
 
         = f.button safe_join([fa_icon('power-off'), t('admin.custom_emojis.disable')]), name: :disable, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
 
-        - if can?(:destroy, :custom_emoji)
-          = f.button safe_join([fa_icon('times'), t('admin.custom_emojis.delete')]), name: :delete, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
+        = f.button safe_join([fa_icon('times'), t('admin.custom_emojis.delete')]), name: :delete, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
 
-        - if can?(:copy, :custom_emoji) && params[:local] != '1'
+        - if params[:local] != '1'
           = f.button safe_join([fa_icon('copy'), t('admin.custom_emojis.copy')]), name: :copy, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
 
     - if params[:local] == '1'

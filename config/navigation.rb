@@ -38,6 +38,7 @@ SimpleNavigation::Configuration.run do |navigation|
       s.item :export, safe_join([fa_icon('cloud-download fw'), t('settings.export')]), settings_export_url
     end
 
+    n.item :custom_emojis, safe_join([fa_icon('smile-o fw'), t('admin.custom_emojis.title')]), custom_emojis_url, highlights_on: %r{/custom_emojis}
     n.item :invites, safe_join([fa_icon('user-plus fw'), t('invites.title')]), invites_path, if: proc { Setting.min_invite_role == 'user' && current_user.functional? }
     n.item :development, safe_join([fa_icon('code fw'), t('settings.development')]), settings_applications_url, if: -> { current_user.functional? }
 
@@ -55,7 +56,6 @@ SimpleNavigation::Configuration.run do |navigation|
       s.item :dashboard, safe_join([fa_icon('tachometer fw'), t('admin.dashboard.title')]), admin_dashboard_url
       s.item :settings, safe_join([fa_icon('cogs fw'), t('admin.settings.title')]), edit_admin_settings_url, if: -> { current_user.admin? }, highlights_on: %r{/admin/settings}
       s.item :announcements, safe_join([fa_icon('bullhorn fw'), t('admin.announcements.title')]), admin_announcements_path, highlights_on: %r{/admin/announcements}
-      s.item :custom_emojis, safe_join([fa_icon('smile-o fw'), t('admin.custom_emojis.title')]), admin_custom_emojis_url, highlights_on: %r{/admin/custom_emojis}
       s.item :relays, safe_join([fa_icon('exchange fw'), t('admin.relays.title')]), admin_relays_url, if: -> { current_user.admin? && !whitelist_mode? }, highlights_on: %r{/admin/relays}
       s.item :sidekiq, safe_join([fa_icon('diamond fw'), 'Sidekiq']), sidekiq_url, link_html: { target: 'sidekiq' }, if: -> { current_user.admin? }
       s.item :pghero, safe_join([fa_icon('database fw'), 'PgHero']), pghero_url, link_html: { target: 'pghero' }, if: -> { current_user.admin? }

@@ -7,6 +7,7 @@
 
     .batch-table__row__content__text
       %samp= ":#{custom_emoji.shortcode}:"
+      %p.hint.muted-hint{ title: t('admin.custom_emojis.owner') }= custom_emoji.account_id.present? ? "@#{custom_emoji.account.username}" : t('admin.custom_emojis.unclaimed') if custom_emoji.local?
 
       - if custom_emoji.local?
         %span.account-role.bot= custom_emoji.category&.name || t('admin.custom_emojis.uncategorized')

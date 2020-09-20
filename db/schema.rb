@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_09_07_195410) do
+ActiveRecord::Schema.define(version: 2020_09_20_084007) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -357,6 +357,8 @@ ActiveRecord::Schema.define(version: 2020_09_07_195410) do
     t.boolean "visible_in_picker", default: true, null: false
     t.bigint "category_id"
     t.integer "image_storage_schema_version"
+    t.bigint "account_id"
+    t.index ["account_id"], name: "index_custom_emojis_on_account_id"
     t.index ["shortcode", "domain"], name: "index_custom_emojis_on_shortcode_and_domain", unique: true
   end
 
@@ -1069,6 +1071,7 @@ ActiveRecord::Schema.define(version: 2020_09_07_195410) do
   add_foreign_key "conversation_mutes", "accounts", name: "fk_225b4212bb", on_delete: :cascade
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade
   add_foreign_key "conversations", "accounts"
+  add_foreign_key "custom_emojis", "accounts", on_delete: :nullify
   add_foreign_key "custom_filters", "accounts", on_delete: :cascade
   add_foreign_key "devices", "accounts", on_delete: :cascade
   add_foreign_key "devices", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade

@@ -188,6 +188,12 @@ Rails.application.routes.draw do
   resources :filters, except: [:show]
   resource :relationships, only: [:show, :update]
 
+  resources :custom_emojis, only: [:index, :new, :create] do
+    collection do
+      post :batch
+    end
+  end
+
   get '/public', to: 'public_timelines#show', as: :public_timeline
   get '/media_proxy/:id/(*any)', to: 'media_proxy#show', as: :media_proxy
 
@@ -285,12 +291,6 @@ Rails.application.routes.draw do
 
     resources :users, only: [] do
       resource :two_factor_authentication, only: [:destroy]
-    end
-
-    resources :custom_emojis, only: [:index, :new, :create] do
-      collection do
-        post :batch
-      end
     end
 
     resources :account_moderation_notes, only: [:create, :destroy]
