@@ -16,6 +16,10 @@ module AccountFinderConcern
       Account.find(-99)
     end
 
+    def site_contact
+      Account.find_local(Setting.site_contact_username.strip.gsub(/\A@/, '')).presence || representative
+    end
+
     def find_local(username)
       find_remote(username, nil)
     end
