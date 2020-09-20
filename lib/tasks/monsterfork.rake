@@ -32,7 +32,11 @@ namespace :monsterfork do
     Account.remote.without_suspended.where(actor_type: 'Application').find_each do |account|
       Rails.logger.info("Refetching application actor: #{account.acct}")
       account.update!(last_webfingered_at: nil)
-      ResolveAccountService.new.call(account)
+      begin
+        ResolveAccountService.new.call(account)
+      rescue Goldfinger::Error, HTTP::Error, OpenSSL::SSL::SSLError, Mastodon::UnexpectedResponseError => e
+        Rails.logger.info("  Failed: #{e.class} (#{e.message})")
+      end
     end
     Rails.logger.info('Done!')
   end
