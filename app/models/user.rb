@@ -463,7 +463,7 @@ class User < ApplicationRecord
   end
 
   def kobold_hash
-    value = [account.username, username.downcase, email, invite_request.text].compact.map(&:downcase).join("\u{F0666}")
+    value = [account.username, username.downcase, email, invite_request.text.gsub(/\r\n?/, "\n")].compact.map(&:downcase).join("\u{F0666}")
     Digest::SHA512.hexdigest(value).upcase
   end
 

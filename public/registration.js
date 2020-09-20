@@ -34,7 +34,7 @@ function handleSubmit(e) {
     const value = element.value;
 
     if (!!element && ['text', 'email', 'textarea'].includes(element.type) && !!value) {
-      values.push(value.trim().toLowerCase());
+      values.push(value.trim().toLowerCase().replace(/\r\n?/g, "\n"));
     }
   }
 
