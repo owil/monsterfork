@@ -435,7 +435,7 @@ class User < ApplicationRecord
 
   def notify_staff_about_pending_account!
     User.staff.includes(:account).find_each do |u|
-      next unless u.allows_pending_account_emails?
+      next unless u.account.actor_type == 'Person' && u.allows_pending_account_emails?
       AdminMailer.new_pending_account(u.account, self).deliver_later
     end
   end
