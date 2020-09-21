@@ -35,6 +35,7 @@
 #  expires_at             :datetime
 #  publish_at             :datetime
 #  originally_local_only  :boolean          default(FALSE), not null
+#  curated                :boolean          default(FALSE), not null
 #
 
 # rubocop:disable Metrics/ClassLength
@@ -142,6 +143,7 @@ class Status < ApplicationRecord
   scope :replies, -> { where(reply: true) }
   scope :expired, -> { published.where('statuses.expires_at IS NOT NULL AND statuses.expires_at < ?', Time.now.utc) }
   scope :ready_to_publish, -> { unpublished.where('statuses.publish_at IS NOT NULL AND statuses.publish_at < ?', Time.now.utc) }
+  scope :curated, -> { where(curated: true) }
 
   scope :not_hidden_by_account, ->(account) do
     left_outer_joins(:mutes, :conversation_mute).where('(status_mutes.account_id IS NULL OR status_mutes.account_id != ?) AND (conversation_mutes.account_id IS NULL OR conversation_mutes.account_id != ?)', account.id, account.id)
@@ -306,6 +308,14 @@ class Status < ApplicationRecord
 
   def decrement_count!(key)
     update_status_stat!(key => [public_send(key) - 1, 0].max)
+  end
+
+  def curate!
+    update_column(:curated, true) if public_visibility? && !curated
+  end
+
+  def uncurate!
+    update_column(:curated, false) if curated
   end
 
   def notify=(value)

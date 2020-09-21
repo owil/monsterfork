@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_09_20_084007) do
+ActiveRecord::Schema.define(version: 2020_09_21_030158) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -883,14 +883,15 @@ ActiveRecord::Schema.define(version: 2020_09_20_084007) do
     t.datetime "expires_at"
     t.datetime "publish_at"
     t.boolean "originally_local_only", default: false, null: false
+    t.boolean "curated", default: false, null: false
     t.index ["account_id", "id", "visibility", "updated_at"], name: "index_statuses_20190820", order: { id: :desc }, where: "(deleted_at IS NULL)"
     t.index ["account_id", "id"], name: "index_unpublished_statuses", order: { id: :desc }, where: "((deleted_at IS NULL) AND (published = false))"
     t.index ["conversation_id"], name: "index_statuses_on_conversation_id", where: "(deleted_at IS NULL)"
     t.index ["expires_at"], name: "index_statuses_on_expires_at", where: "(expires_at IS NOT NULL)"
-    t.index ["id", "account_id"], name: "index_statuses_local", order: { id: :desc }, where: "((published = true) AND ((local = true) OR (uri IS NULL)) AND (deleted_at IS NULL) AND (visibility = 0) AND (reblog_of_id IS NULL) AND ((reply = false) OR (in_reply_to_account_id = account_id)))"
-    t.index ["id", "account_id"], name: "index_statuses_local_reblogs", where: "(((local = true) OR (uri IS NULL)) AND (reblog_of_id IS NOT NULL))"
     t.index ["id", "account_id"], name: "index_statuses_on_id_and_account_id"
-    t.index ["id", "account_id"], name: "index_statuses_public", order: { id: :desc }, where: "((published = true) AND (deleted_at IS NULL) AND (visibility = 0) AND (reblog_of_id IS NULL) AND ((reply = false) OR (in_reply_to_account_id = account_id)))"
+    t.index ["id"], name: "index_statuses_curated", order: :desc, where: "((published = true) AND (deleted_at IS NULL) AND (curated = true))"
+    t.index ["id"], name: "index_statuses_local", order: :desc, where: "((published = true) AND ((local = true) OR (uri IS NULL)) AND (deleted_at IS NULL))"
+    t.index ["id"], name: "index_statuses_public", order: :desc, where: "((published = true) AND (deleted_at IS NULL))"
     t.index ["in_reply_to_account_id"], name: "index_statuses_on_in_reply_to_account_id"
     t.index ["in_reply_to_id"], name: "index_statuses_on_in_reply_to_id"
     t.index ["publish_at"], name: "index_statuses_on_publish_at", where: "(publish_at IS NOT NULL)"

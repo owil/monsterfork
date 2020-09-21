@@ -22,23 +22,18 @@ class FanOutOnWriteService < BaseService
     end
 
     return if status.account.silenced?
+    return if status.reblog? && !Setting.show_reblogs_in_public_timelines
 
-    render_anonymous_payload(status.proper)
-    deliver_to_hashtags(status)
-
-    if status.reblog?
-      if status.local? && status.reblog.public_visibility? && !status.reblog.account.silenced?
-        deliver_to_public(status.reblog)
-        deliver_to_media(status.reblog) if status.reblog.media_attachments.any?
-      end
-      return
+    if status.distributable?
+      render_anonymous_payload(status)
+      deliver_to_hashtags(status)
     end
 
-    deliver_to_hashtags(status) if status.distributable?
-    return if !status.public_visibility? || (status.reply? && status.in_reply_to_account_id != status.account_id)
+    return unless status.public_visibility?
+    return if status.reply? && status.in_reply_to_account_id != status.account_id && !Setting.show_replies_in_public_timelines
 
-    deliver_to_media(status, true) if status.media_attachments.any?
-    deliver_to_public(status, true)
+    deliver_to_public(status)
+    deliver_to_media(status) if status.media_attachments.any?
   end
 
   private
@@ -93,26 +88,18 @@ class FanOutOnWriteService < BaseService
     end
   end
 
-  def deliver_to_public(status, tavern = false)
-    key = "timeline:public:#{status.id}"
-    return if Redis.current.get(key)
-
+  def deliver_to_public(status)
     Rails.logger.debug "Delivering status #{status.id} to public timeline"
 
-    Redis.current.set(key, 1, ex: 2.hours)
-
-    Redis.current.publish('timeline:public', @payload) if status.local? || !tavern
+    Redis.current.publish('timeline:public', @payload) if status.curated?
     Redis.current.publish('timeline:public:local', @payload) if status.local?
     Redis.current.publish('timeline:public:remote', @payload)
   end
 
-  def deliver_to_media(status, tavern = false)
-    key = "timeline:public:#{status.id}"
-    return if Redis.current.get(key)
-
+  def deliver_to_media(status)
     Rails.logger.debug "Delivering status #{status.id} to media timeline"
 
-    Redis.current.publish('timeline:public:media', @payload) if status.local? || !tavern
+    Redis.current.publish('timeline:public:media', @payload) if status.curated?
     Redis.current.publish('timeline:public:local:media', @payload) if status.local?
     Redis.current.publish('timeline:public:remote:media', @payload)
   end

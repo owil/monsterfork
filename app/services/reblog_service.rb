@@ -29,6 +29,7 @@ class ReblogService < BaseService
     end
 
     reblog = account.statuses.create!(reblog: reblogged_status, text: '', visibility: visibility, rate_limit: options[:with_rate_limit], sensitive: true, spoiler_text: options[:spoiler_text] || '', published: true)
+    curate!(reblogged_status) unless reblogged_status.curated? || !reblogged_status.published?
 
     DistributionWorker.perform_async(reblog.id)
     ActivityPub::DistributionWorker.perform_async(reblog.id) unless reblogged_status.local_only?
@@ -61,5 +62,10 @@ class ReblogService < BaseService
 
   def build_json(reblog)
     Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(reblog, embed: false), ActivityPub::ActivitySerializer, signer: reblog.account, target_domain: reblog.account.domain))
+  end
+
+  def curate!(status)
+    status.curate!
+    DistributionWorker.perform_async(status.id)
   end
 end
