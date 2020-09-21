@@ -238,6 +238,39 @@ class FeedManager
     end
   end
 
+  # Populate list feeds of account from scratch
+  # @param [Account] account
+  # @return [void]
+  def populate_lists(account)
+    limit = FeedManager::MAX_ITEMS / 2
+
+    account.owned_lists.includes(:accounts) do |list|
+      timeline_key = key(:list, list.id)
+      filter_options = filter_options_for(account.id)
+
+      list.accounts.includes(:account_stat).find_each do |target_account|
+        if redis.zcard(timeline_key) >= limit
+          oldest_home_score = redis.zrange(timeline_key, 0, 0, with_scores: true).first.last.to_i
+          last_status_score = Mastodon::Snowflake.id_at(account.last_status_at)
+
+          # If the feed is full and this account has not posted more recently
+          # than the last item on the feed, then we can skip the whole account
+          # because none of its statuses would stay on the feed anyway
+          next if last_status_score < oldest_home_score
+        end
+
+        statuses = target_account.statuses.published.without_reblogs.where(visibility: [:public, :unlisted, :private]).includes(:mentions, :preloadable_poll).limit(limit)
+        crutches = build_crutches(account.id, statuses)
+
+        statuses.each do |status|
+          add_to_feed(:list, list.id, status, false) unless filter_from_list?(status, account.id) || filter_from_home?(status, account.id, crutches, filter_options)
+        end
+
+        trim(:list, list.id)
+      end
+    end
+  end
+
   # Populate home feed of account from scratch
   # @param [Account] account
   # @return [void]
@@ -261,14 +294,12 @@ class FeedManager
         next if last_status_score < oldest_home_score
       end
 
-      statuses = target_account.statuses.published.without_replies.where(visibility: [:public, :unlisted, :private]).includes(:preloadable_poll, reblog: :account).limit(limit)
+      statuses = target_account.statuses.published.where(visibility: [:public, :unlisted, :private]).includes(:mentions, :preloadable_poll, reblog: [:account, :mentions]).limit(limit)
       crutches = build_crutches(account.id, statuses)
       filter_options = filter_options_for(account.id)
 
       statuses.each do |status|
-        next if filter_from_home?(status, account.id, crutches, filter_options)
-
-        add_to_feed(:home, account.id, status, aggregate)
+        add_to_feed(:home, account.id, status, aggregate) unless filter_from_home?(status, account.id, crutches, filter_options)
       end
 
       trim(:home, account.id)
