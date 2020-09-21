@@ -106,13 +106,13 @@ class Status < ApplicationRecord
   scope :recent, -> { reorder(id: :desc) }
   scope :remote, -> { where(local: false).where.not(uri: nil) }
   scope :local,  -> { where(local: true).or(where(uri: nil)) }
-
   scope :with_accounts, ->(ids) { where(id: ids).includes(:account) }
   scope :without_replies, -> { where(reply: false) }
   scope :without_reblogs, -> { where('statuses.reblog_of_id IS NULL') }
   scope :with_public_visibility, -> { where(visibility: :public, published: true) }
   scope :distributable, -> { where(visibility: [:public, :unlisted], published: true) }
   scope :tagged_with, ->(tag) { joins(:statuses_tags).where(statuses_tags: { tag_id: tag }) }
+  scope :in_chosen_languages, ->(account) { where(language: nil).or where(language: account.chosen_languages) }
   scope :excluding_silenced_accounts, -> { left_outer_joins(:account).where(accounts: { silenced_at: nil }) }
   scope :including_silenced_accounts, -> { left_outer_joins(:account).where.not(accounts: { silenced_at: nil }) }
   scope :not_excluded_by_account, ->(account) { where.not(account_id: account.excluded_from_timeline_account_ids) }
@@ -451,23 +451,6 @@ class Status < ApplicationRecord
       end
     end
 
-    def as_public_timeline(account = nil, local_only = false)
-      query = timeline_scope(local_only)
-      query = query.without_replies unless Setting.show_replies_in_public_timelines
-
-      apply_timeline_filters(query, account, [:local, true].include?(local_only))
-    end
-
-    def as_tag_timeline(tag, account = nil, local_only = false)
-      query = timeline_scope(local_only, include_unlisted: true).tagged_with(tag)
-
-      apply_timeline_filters(query, account, local_only)
-    end
-
-    def as_outbox_timeline(account)
-      where(account: account, visibility: :public)
-    end
-
     def favourites_map(status_ids, account_id)
       Favourite.select('status_id').where(status_id: status_ids).where(account_id: account_id).each_with_object({}) { |f, h| h[f.status_id] = true }
     end
@@ -605,50 +588,6 @@ class Status < ApplicationRecord
       query = query.not_hidden_by_account(account)
       query = query.in_chosen_languages(account) if account.chosen_languages.present?
       query
-    end
-
-    def timeline_scope(scope = false, include_unlisted: false)
-      starting_scope = case scope
-                       when :local, true
-                         Status.local
-                       when :remote
-                         Status.remote
-                       when :local_reblogs
-                         Status.locally_reblogged
-                       else
-                         Status
-                       end
-      starting_scope = include_unlisted ? starting_scope.distributable : starting_scope.with_public_visibility
-      scope != :local_reblogs ? starting_scope.without_reblogs : starting_scope
-    end
-
-    def apply_timeline_filters(query, account, local_only)
-      if account.nil?
-        filter_timeline_default(query)
-      else
-        filter_timeline_for_account(query, account, local_only)
-      end
-    end
-
-    def filter_timeline_for_account(query, account, local_only)
-      query = query.not_excluded_by_account(account)
-      query = query.not_domain_blocked_by_account(account) unless local_only
-      query = query.in_chosen_languages(account) if account.chosen_languages.present?
-      query = query.not_hidden_by_account(account)
-      query.merge(account_silencing_filter(account))
-    end
-
-    def filter_timeline_default(query)
-      query.not_local_only.excluding_silenced_accounts
-    end
-
-    def account_silencing_filter(account)
-      if account.silenced?
-        including_myself = left_outer_joins(:account).where(account_id: account.id).references(:accounts)
-        excluding_silenced_accounts.or(including_myself)
-      else
-        excluding_silenced_accounts
-      end
     end
   end
 
