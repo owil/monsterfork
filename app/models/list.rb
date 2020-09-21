@@ -14,7 +14,7 @@
 class List < ApplicationRecord
   include Paginable
 
-  PER_ACCOUNT_LIMIT = 50
+  PER_ACCOUNT_LIMIT = 100
 
   enum replies_policy: [:list_replies, :all_replies, :no_replies], _prefix: :show
 
