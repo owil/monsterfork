@@ -26,7 +26,6 @@ en-MP:
         setting_default_content_type_console_html: <code>Plain-text console formatting.</code>
         setting_default_content_type_bbcode_html: "<strong>[b]Bold[/b]</strong>, <u>[u]Underline[/u]</u>, <em>[i]Italic[/i]</em>, <code>[code]Console[/code]</code>, ..."
         setting_default_language: The language of your roars can be detected automatically, but it's not always accurate
-        setting_filter_to_unknown: Do not show replies to unfollowed accounts on your home timeline.  Takes effect for newly-pushed items.
         setting_filter_from_unknown: Do not show boosts from unfollowed accounts on your home timeline.  Takes effect for newly-pushed items.
         setting_manual_publish: This allows you to draft, proofread, and edit your roars before publishing them.  You can publish a roar from its <strong>action menu</strong> (the three dots).
         setting_rss_disabled: Improves privacy by turning off your account's public RSS feed.
@@ -55,7 +54,6 @@ en-MP:
         setting_display_media_show_all: Reveal all
         setting_expand_spoilers: Always expand roars marked with content warnings
         setting_favourite_modal: Show confirmation dialog before admiring (applies to Glitch flavour only)
-        setting_filter_to_unknown: Filter replies to unfollowed accounts
         setting_filter_from_unknown: Filter boosts from unfollowed accounts
         setting_manual_publish: Manually publish roars
         setting_publish_in: Auto-publish

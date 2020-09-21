@@ -60,7 +60,6 @@ class UserSettingsDecorator
     user.settings['boost_every']         = boost_every_preference if change?('setting_boost_every')
     user.settings['boost_jitter']        = boost_jitter_preference if change?('setting_boost_jitter')
     user.settings['boost_random']        = boost_random_preference if change?('setting_boost_random')
-    user.settings['filter_to_unknown']   = filter_to_unknown_preference if change?('setting_filter_to_unknown')
     user.settings['filter_from_unknown'] = filter_from_unknown_preference if change?('setting_filter_from_unknown')
     user.settings['unpublish_on_delete'] = unpublish_on_delete_preference if change?('setting_unpublish_on_delete')
     user.settings['rss_disabled']        = rss_disabled_preference if change?('setting_rss_disabled')
@@ -228,10 +227,6 @@ class UserSettingsDecorator
 
   def boost_random_preference
     boolean_cast_setting 'setting_boost_random'
-  end
-
-  def filter_to_unknown_preference
-    boolean_cast_setting 'setting_filter_to_unknown'
   end
 
   def filter_from_unknown_preference

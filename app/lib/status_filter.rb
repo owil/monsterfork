@@ -55,8 +55,6 @@ class StatusFilter
   end
 
   def policy_allows_show?
-    return false unless StatusPolicy.new(account, status, @preloaded_relations).show?
-
-    status.reblog? ? StatusPolicy.new(account, status.reblog, @preloaded_relations).show? : true
+    StatusPolicy.new(account, status, @preloaded_relations).show?
   end
 end

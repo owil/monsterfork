@@ -437,18 +437,13 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       conversation = Conversation.find_by(uri: uri) if conversation.blank?
 
       if @object['inReplyTo'].blank? && replied_to_status.blank?
-        params = {
-          uri: uri,
-          root: object_uri,
-          account: @account,
-        }.freeze
         if conversation.blank?
-          conversation = Conversation.create!(params)
+          conversation = Conversation.create!(uri: uri, root: object_uri)
         elsif conversation.root.blank?
-          conversation.update!(params)
+          conversation.update!(uri: uri, root: object_uri)
         end
       elsif conversation.blank?
-        conversation = Conversation.create!(uri: uri, account_id: nil)
+        conversation = Conversation.create!(uri: uri)
       end
 
       conversation

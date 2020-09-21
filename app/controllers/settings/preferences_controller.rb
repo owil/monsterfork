@@ -74,7 +74,6 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_boost_every,
       :setting_boost_jitter,
       :setting_boost_random,
-      :setting_filter_to_unknown,
       :setting_filter_from_unknown,
       :setting_unpublish_on_delete,
       :setting_rss_disabled,

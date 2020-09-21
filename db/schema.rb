@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_09_23_000000) do
+ActiveRecord::Schema.define(version: 2020_09_23_000002) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -328,10 +328,8 @@ ActiveRecord::Schema.define(version: 2020_09_23_000000) do
     t.string "uri"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.bigint "account_id"
     t.boolean "public", default: false, null: false
     t.string "root"
-    t.index ["account_id"], name: "index_conversations_on_account_id"
     t.index ["uri"], name: "index_conversations_on_uri", unique: true
   end
 
@@ -877,7 +875,6 @@ ActiveRecord::Schema.define(version: 2020_09_23_000000) do
     t.integer "nest_level", limit: 2, default: 0, null: false
     t.boolean "published", default: true, null: false
     t.text "title"
-    t.boolean "semiprivate", default: false, null: false
     t.text "original_text"
     t.text "footer"
     t.datetime "expires_at"
@@ -1071,7 +1068,6 @@ ActiveRecord::Schema.define(version: 2020_09_23_000000) do
   add_foreign_key "collection_pages", "accounts", on_delete: :cascade
   add_foreign_key "conversation_mutes", "accounts", name: "fk_225b4212bb", on_delete: :cascade
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade
-  add_foreign_key "conversations", "accounts"
   add_foreign_key "custom_emojis", "accounts", on_delete: :nullify
   add_foreign_key "custom_filters", "accounts", on_delete: :cascade
   add_foreign_key "devices", "accounts", on_delete: :cascade

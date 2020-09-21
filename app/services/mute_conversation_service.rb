@@ -5,6 +5,6 @@ class MuteConversationService < BaseService
     return if account.blank? || conversation.blank?
 
     account.mute_conversation!(conversation)
-    MuteConversationWorker.perform_async(account.id, conversation.id) unless account.id == conversation.account_id
+    MuteConversationWorker.perform_async(account.id, conversation.id)
   end
 end

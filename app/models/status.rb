@@ -29,7 +29,6 @@
 #  nest_level             :integer          default(0), not null
 #  published              :boolean          default(TRUE), not null
 #  title                  :text
-#  semiprivate            :boolean          default(FALSE), not null
 #  original_text          :text
 #  footer                 :text
 #  expires_at             :datetime
@@ -135,10 +134,8 @@ class Status < ApplicationRecord
   scope :including_unpublished, -> { unscope(where: :published) }
   scope :unpublished, -> { rewhere(published: false) }
   scope :published, -> { where(published: true) }
-  scope :without_semiprivate, -> { where(semiprivate: false) }
   scope :reblogs, -> { where('statuses.reblog_of_id IS NOT NULL') }
   scope :locally_reblogged, -> { where(id: Status.unscoped.local.reblogs.select(:reblog_of_id)) }
-  scope :conversations_by, ->(account) { joins(:conversation).where(conversations: { account: account }) }
   scope :mentioning_account, ->(account) { joins(:mentions).where(mentions: { account: account }) }
   scope :replies, -> { where(reply: true) }
   scope :expired, -> { published.where('statuses.expires_at IS NOT NULL AND statuses.expires_at < ?', Time.now.utc) }
@@ -377,13 +374,6 @@ class Status < ApplicationRecord
     @private_permissions = domain_permissions.where(visibility: [:private, :direct, :limited]).exists?
   end
 
-  def should_be_semiprivate?
-    return @should_be_semiprivate if defined?(@should_be_semiprivate)
-    return @should_be_semiprivate = true if distributable? && (private_domain_permissions? || account.private_domain_permissions?)
-
-    @should_be_semiprivate = !distributable? && (public_domain_permissions? || account.public_domain_permissions?)
-  end
-
   def should_limit_visibility?
     less_private_than?(thread&.visibility)
   end
@@ -408,7 +398,6 @@ class Status < ApplicationRecord
   after_create :set_poll_id
 
   after_save :set_domain_permissions, if: :local?
-  after_save :set_semiprivate, if: :local?
   after_save :set_conversation_root
 
   class << self
@@ -552,7 +541,6 @@ class Status < ApplicationRecord
       return query if options[:without_category_filters]
 
       query = query.published unless options[:include_unpublished]
-      query = query.without_semiprivate unless options[:include_semiprivate]
 
       if options[:only_reblogs]
         query = query.joins(:reblog)
@@ -576,12 +564,11 @@ class Status < ApplicationRecord
           query = query.without_reblogs
         end
 
-        query = if options[:include_replies]
-                  query = query.replies if options[:only_replies]
-                  query.conversations_by(target_account)
-                else
-                  query.without_replies
-                end
+        if options[:include_replies]
+          query = query.replies if options[:only_replies]
+        else
+          query = query.without_replies
+        end
       end
 
       return query if options[:tag].blank?
@@ -666,15 +653,11 @@ class Status < ApplicationRecord
     if reply? && !thread.nil?
       self.in_reply_to_account_id = carried_over_reply_to_account_id
       self.conversation_id        = thread.conversation_id if conversation_id.nil?
-    elsif conversation_id.nil?
-      self.conversation = reply? ? Conversation.new(account_id: nil) : Conversation.new(account_id: account_id)
-    elsif !reply? && account_id != conversation.account_id
-      conversation.update!(account_id: account_id)
     end
   end
 
   def set_conversation_root
-    conversation.update!(root: uri, account_id: account_id) if !reply && conversation.root.blank?
+    conversation.update!(root: uri) if !reply && conversation.present? && conversation.root.blank?
   end
 
   def carried_over_reply_to_account_id
@@ -709,10 +692,6 @@ class Status < ApplicationRecord
         domain_permissions.create!(domain: permission.domain, visibility: permission.visibility) if less_private_than?(permission.visibility)
       end
     end
-  end
-
-  def set_semiprivate
-    update_column(:semiprivate, should_be_semiprivate?) if semiprivate != should_be_semiprivate?
   end
 
   def update_statistics

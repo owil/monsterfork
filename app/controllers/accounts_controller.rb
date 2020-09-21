@@ -83,7 +83,6 @@ class AccountsController < ApplicationController
     @account.statuses.permitted_for(
       @account,
       current_account,
-      include_semiprivate: true,
       include_reblogs: !(threads_requested? || replies_requested?),
       only_reblogs: reblogs_requested?,
       include_replies: replies_requested?,

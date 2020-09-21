@@ -63,7 +63,6 @@ class ActivityPub::OutboxesController < ActivityPub::BaseController
       include_replies: true,
       include_reblogs: true,
       public: !(owner? || follower?),
-      include_semiprivate: owner? || mutual_follower?,
       exclude_local_only: true
     )
   end

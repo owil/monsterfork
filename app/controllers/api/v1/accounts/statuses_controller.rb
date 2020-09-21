@@ -44,7 +44,6 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
     @account.statuses.permitted_for(
       @account,
       current_account,
-      include_semiprivate: true,
       include_reblogs: include_reblogs?,
       include_replies: include_replies?,
       only_reblogs: only_reblogs?,

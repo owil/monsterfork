@@ -72,12 +72,6 @@ class StatusPolicy < ApplicationPolicy
     author.domain_blocking?(current_account.domain)
   end
 
-  def conversation_author_blocking_domain?
-    return false if current_account.nil? || current_account.domain.nil? || conversation_owner.nil?
-
-    conversation_owner.domain_blocking?(current_account.domain)
-  end
-
   def blocking_author?
     return false if current_account.nil?
 
@@ -90,17 +84,8 @@ class StatusPolicy < ApplicationPolicy
     @preloaded_relations[:blocked_by] ? @preloaded_relations[:blocked_by][author.id] : author.blocking?(current_account)
   end
 
-  def conversation_author_blocking?
-    return false if conversation_owner.nil?
-
-    @preloaded_relations[:blocked_by] ? @preloaded_relations[:blocked_by][conversation_owner.id] : conversation_owner.blocking?(current_account)
-  end
-
   def blocked_by_owners?
-    return author_blocking? || author_blocking_domain? if conversation_owner&.id == author.id
-    return true if conversation_author_blocking? || author_blocking?
-
-    conversation_author_blocking_domain? || author_blocking_domain?
+    author_blocking? || author_blocking_domain?
   end
 
   def following_author?
@@ -109,24 +94,12 @@ class StatusPolicy < ApplicationPolicy
     @preloaded_relations[:following] ? @preloaded_relations[:following][author.id] : current_account.following?(author)
   end
 
-  def following_conversation_owner?
-    return false if current_account.nil? || conversation_owner.nil?
-
-    @preloaded_relations[:following] ? @preloaded_relations[:following][conversation_owner.id] : current_account.following?(conversation_owner)
-  end
-
   def following_owners?
-    return following_author? if conversation_owner&.id == author.id
-
-    following_conversation_owner? && following_author?
+    following_author?
   end
 
   def author
     @author ||= record.account
-  end
-
-  def conversation_owner
-    @conversation_owner ||= record.conversation&.account
   end
 
   def local_only?
