@@ -79,7 +79,7 @@ class FeedManager
   # @param [Status] status
   # @return [Boolean]
   def push_to_list(list, status)
-    return false if filter_from_list?(status, list) || !add_to_feed(:list, list.id, status, list.account.user&.aggregates_reblogs?)
+    return false if status.reblog? || status.account_id == list.account_id || filter_from_list?(status, list) || !add_to_feed(:list, list.id, status, false)
 
     trim(:list, list.id)
     PushUpdateWorker.perform_async(list.account_id, status.id, "timeline:list:#{list.id}") if push_update_required?("timeline:list:#{list.id}")
@@ -91,7 +91,7 @@ class FeedManager
   # @param [Status] status
   # @return [Boolean]
   def unpush_from_list(list, status)
-    return false unless remove_from_feed(:list, list.id, status, list.account.user&.aggregates_reblogs?)
+    return false unless remove_from_feed(:list, list.id, status, false)
 
     redis.publish("timeline:list:#{list.id}", Oj.dump(event: :delete, payload: status.id.to_s))
     true
