@@ -199,6 +199,6 @@ class AccountsController < ApplicationController
   end
 
   def rss_disabled?
-    current_user.setting_rss_disabled
+    @account.user&.setting_rss_disabled
   end
 end
