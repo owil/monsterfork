@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_09_23_000002) do
+ActiveRecord::Schema.define(version: 2020_09_23_000003) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -528,7 +528,9 @@ ActiveRecord::Schema.define(version: 2020_09_23_000002) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "replies_policy", default: 0, null: false
+    t.boolean "reblogs", default: false, null: false
     t.index ["account_id"], name: "index_lists_on_account_id"
+    t.index ["id"], name: "lists_reblog_feeds", where: "(reblogs = true)"
   end
 
   create_table "markers", force: :cascade do |t|
