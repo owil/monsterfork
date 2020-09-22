@@ -13,7 +13,10 @@ const getOrderedLists = createSelector([state => state.get('lists')], lists => {
     return lists;
   }
 
-  return lists.toList().filter(item => !!item).sort((a, b) => a.get('title').localeCompare(b.get('title'))).take(4);
+  return lists.toList().filter(item => !!item).sort((a, b) => {
+    const r = (b.get('reblogs') ? 1 : 0) - (a.get('reblogs') ? 1 : 0);
+    return r === 0 ? a.get('title').localeCompare(b.get('title')) : r;
+  });
 });
 
 const mapStateToProps = state => ({
