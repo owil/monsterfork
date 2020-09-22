@@ -31,7 +31,7 @@ class Scheduler::AmbassadorScheduler
   end
 
   def ambassador_boost_candidates
-    ambassador_boostable.joins(:status_stat).where('favourites_count + reblogs_count > 4')
+    ambassador_boostable.joins(:status_stat).where('favourites_count + reblogs_count >= ?', ENV.fetch('AMBASSADOR_THRESHOLD', 3).to_i)
   end
 
   def ambassador_boostable
