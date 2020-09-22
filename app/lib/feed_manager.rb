@@ -182,9 +182,10 @@ class FeedManager
 
     statuses = query.to_a
     crutches = build_crutches(list.account_id, statuses)
+    filter_options = filter_options_for(list.account.id)
 
     statuses.each do |status|
-      next if filter_from_home?(status, list.account_id, crutches) || filter_from_list?(status, list)
+      next if filter_from_home?(status, list.account_id, crutches, filter_options) || filter_from_list?(status, list)
 
       add_to_feed(:list, list.id, status, aggregate)
     end
