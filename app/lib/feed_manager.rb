@@ -67,8 +67,8 @@ class FeedManager
   # @param [Account] account
   # @param [Status] status
   # @return [Boolean]
-  def unpush_from_home(account, status)
-    return false unless remove_from_feed(:home, account.id, status, account.user&.aggregates_reblogs?)
+  def unpush_from_home(account, status, include_reblogs_list = true)
+    return false unless remove_from_feed(:home, account.id, status, account.user&.aggregates_reblogs?, include_reblogs_list)
 
     redis.publish("timeline:#{account.id}", Oj.dump(event: :delete, payload: status.id.to_s))
     true
@@ -218,7 +218,7 @@ class FeedManager
     oldest_list_score = redis.zrange(timeline_key, 0, 0, with_scores: true)&.first&.last&.to_i || 0
 
     from_account.statuses.select('id, reblog_of_id').where('id > ?', oldest_list_score).reorder(nil).find_each do |status|
-      remove_from_feed(:list, list.id, status, list.reblogs? && list.account.user&.aggregates_reblogs?)
+      remove_from_feed(:list, list.id, status, list.account.user&.aggregates_reblogs?, !list.reblogs?)
     end
   end
 
@@ -250,7 +250,7 @@ class FeedManager
     timeline_status_ids = redis.zrange(timeline_key, 0, -1)
 
     Status.reblogs.where(id: timeline_status_ids).find_each do |status|
-      unpush_from_home(account, status)
+      unpush_from_home(account, status, false)
     end
   end
 
@@ -320,7 +320,7 @@ class FeedManager
       statuses.each do |status|
         next if filter_from_home?(status, account.id, crutches, filter_options)
 
-        add_to_feed(:home, account.id, status, aggregate, no_reblogs)
+        add_to_feed(:home, account.id, status, aggregate, no_reblogs, false)
       end
 
       trim(:home, account.id)
@@ -562,12 +562,12 @@ class FeedManager
   # @param [Status] status
   # @param [Boolean] aggregate_reblogs
   # @return [Boolean]
-  def add_to_feed(timeline_type, account_id, status, aggregate_reblogs = true, skip_reblogs = false)
+  def add_to_feed(timeline_type, account_id, status, aggregate_reblogs = true, skip_reblogs = false, stream = true)
     timeline_key = key(timeline_type, account_id)
     reblog_key   = key(timeline_type, account_id, 'reblogs')
 
     if status.reblog?
-      add_to_reblogs(account_id, status, aggregate_reblogs) if timeline_type == :home
+      add_to_reblogs(account_id, status, aggregate_reblogs, stream) if timeline_type == :home
       return false if skip_reblogs
     end
 
@@ -603,7 +603,7 @@ class FeedManager
       redis.zadd(timeline_key, status.id, status.id)
     end
 
-    add_to_reblogs(account_id, status, aggregate_reblogs) if timeline_type == :home && status.reblog?
+    add_to_reblogs(account_id, status, aggregate_reblogs, stream) if timeline_type == :home && status.reblog?
 
     true
   end
@@ -617,11 +617,11 @@ class FeedManager
   # @param [Status] status
   # @param [Boolean] aggregate_reblogs
   # @return [Boolean]
-  def remove_from_feed(timeline_type, account_id, status, aggregate_reblogs = true)
+  def remove_from_feed(timeline_type, account_id, status, aggregate_reblogs = true, include_reblogs_list = true)
     timeline_key = key(timeline_type, account_id)
     reblog_key   = key(timeline_type, account_id, 'reblogs')
 
-    remove_from_reblogs(account_id, status, aggregate_reblogs) if timeline_type == :home && status.reblog?
+    remove_from_reblogs(account_id, status, aggregate_reblogs) if include_reblogs_list && timeline_type == :home && status.reblog?
 
     if status.reblog? && (aggregate_reblogs.nil? || aggregate_reblogs)
       # 1. If the reblogging status is not in the feed, stop.
@@ -694,12 +694,12 @@ class FeedManager
     end
   end
 
-  def add_to_reblogs(account_id, status, aggregate_reblogs = true)
+  def add_to_reblogs(account_id, status, aggregate_reblogs = true, stream = true)
     reblogs_list_id = find_or_create_reblogs_list(account_id).id
     return unless add_to_feed(:list, reblogs_list_id, status, aggregate_reblogs)
 
     trim(:list, reblogs_list_id)
-    return unless push_update_required?("timeline:list:#{reblogs_list_id}")
+    return unless stream && push_update_required?("timeline:list:#{reblogs_list_id}")
 
     PushUpdateWorker.perform_async(account_id, status.id, "timeline:list:#{reblogs_list_id}")
   end
