@@ -63,6 +63,7 @@ class UserSettingsDecorator
     user.settings['filter_from_unknown'] = filter_from_unknown_preference if change?('setting_filter_from_unknown')
     user.settings['unpublish_on_delete'] = unpublish_on_delete_preference if change?('setting_unpublish_on_delete')
     user.settings['rss_disabled']        = rss_disabled_preference if change?('setting_rss_disabled')
+    user.settings['no_boosts_home']      = no_boosts_home_preference if change?('setting_no_boosts_home')
   end
 
   def merged_notification_emails
@@ -239,6 +240,10 @@ class UserSettingsDecorator
 
   def rss_disabled_preference
     boolean_cast_setting 'setting_rss_disabled'
+  end
+
+  def no_boosts_home_preference
+    boolean_cast_setting 'setting_no_boosts_home'
   end
 
   def boolean_cast_setting(key)

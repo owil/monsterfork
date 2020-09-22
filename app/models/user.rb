@@ -124,7 +124,7 @@ class User < ApplicationRecord
            :style_wide_media,
            :publish_in, :unpublish_in, :unpublish_delete, :boost_every, :boost_jitter,
            :boost_random, :filter_from_unknown, :unpublish_on_delete,
-           :rss_disabled,
+           :rss_disabled, :no_boosts_home,
            to: :settings, prefix: :setting, allow_nil: false
 
   attr_reader :invite_code, :sign_in_token_attempt
@@ -261,6 +261,10 @@ class User < ApplicationRecord
 
   def shows_application?
     @shows_application ||= settings.show_application
+  end
+
+  def disables_home_reblogs?
+    @disables_home_reblogs ||= settings.no_boosts_home
   end
 
   # rubocop:disable Naming/MethodParameterName

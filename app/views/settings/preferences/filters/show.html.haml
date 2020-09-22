@@ -10,6 +10,9 @@
   %h4= t 'preferences.filtering'
 
   .fields-group
+    = f.input :setting_no_boosts_home, as: :boolean, wrapper: :with_label
+
+  .fields-group
     = f.input :setting_filter_from_unknown, as: :boolean, wrapper: :with_label
 
   %h4= t 'preferences.public_timelines'

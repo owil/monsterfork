@@ -8,10 +8,12 @@ class Settings::PreferencesController < Settings::BaseController
   def show; end
 
   def update
-    user_settings.update(user_settings_params.to_h)
+    if user_settings.update(user_settings_params.to_h)
+      Rails.cache.delete("filter_settings:#{current_user.account_id}")
+      ClearReblogsWorker.perform_async(current_user.account_id) if current_user.disables_home_reblogs?
+    end
 
     if current_user.update(user_params)
-      Rails.cache.delete("filter_settings:#{current_user.account_id}")
       I18n.locale = current_user.locale
       redirect_to after_update_redirect_path, notice: I18n.t('generic.changes_saved_msg')
     else
@@ -77,6 +79,7 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_filter_from_unknown,
       :setting_unpublish_on_delete,
       :setting_rss_disabled,
+      :setting_no_boosts_home,
       notification_emails: %i(follow follow_request reblog favourite mention digest report pending_account trending_tag),
       interactions: %i(must_be_follower must_be_following must_be_following_dm)
     )
