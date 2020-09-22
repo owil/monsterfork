@@ -459,7 +459,7 @@ class User < ApplicationRecord
   end
 
   def user_might_not_be_a_spam_bot
-    username == account.username && invite_request&.text.present? && kobold_hash_matches?
+    username == account.username && (invited? || (invite_request&.text.present? && kobold_hash_matches?))
   end
 
   def kobold_hash_matches?
