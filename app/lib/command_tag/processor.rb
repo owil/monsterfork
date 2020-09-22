@@ -107,6 +107,11 @@ class CommandTag::Processor
     end
   end
 
+  # Calls an arbitary public method (if it exists) on a given value and returns the result.
+  def transform_using(name, value, args = [])
+    respond_to?(name) ? public_send(name, value, args) : value
+  end
+
   # Moves command tags placed after hashtags and mentions to their own line.
   def prepare_input(text)
     text.gsub(/\r\n|\n\r|\r/, "\n").gsub(/^\s*(#{MENTIONS_OR_HASHTAGS_RE})#!/, "\\1\n#!")
@@ -143,9 +148,13 @@ class CommandTag::Processor
 
         str_start, str_end = [str_end, str_start] if str_start > str_end
 
-        value = (['all', '[]'].include?(parts[1]) ? var(name).join(separator) : var(name)[index].to_s)
+        old_value = (['all', '[]'].include?(parts[1]) ? var(name).join(separator) : var(name)[index].to_s)
+        name      = name.gsub(/[^\w_]+/, '_')
+        new_value = transform_using("transform_#{name}_template_return", old_value, [index, str_start, str_end])
+        next new_value if new_value != old_value
 
-        (str_end - str_start).zero? ? value : value[str_start..str_end]
+        new_value = transform_using("transform_#{name}_template_value", new_value, [index, str_start, str_end])
+        (str_end - str_start).zero? ? new_value : new_value[str_start..str_end]
       end
     end.rstrip
   end
