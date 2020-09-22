@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 module CommandTag::Command::TextTools
+  def handle_000_keysmash_startup(args = [100, 100])
+    @vars['keysmash'] = [handle_keysmash_with_return(args)]
+  end
+
   def handle_code_at_start(args)
     return if args.count < 2
 
@@ -55,4 +59,32 @@ module CommandTag::Command::TextTools
 
   alias handle_resub_before_save handle_replace_before_save
   alias handle_regex_sub_before_save handle_replace_before_save
+
+  def handle_keysmash_with_return(args)
+    keyboard = [
+      'asdf', 'jkl;',
+      'gh', "'",
+      'we', 'io',
+      'r', 'u',
+      'cv', 'nm',
+      't', 'x', ',',
+      'q', 'z',
+      'y', 'b',
+      'p', '[',
+      '.', '/',
+      ']', '\\'
+    ]
+
+    min_size = [[1, args[1].to_i].max, 100].min
+    max_size = [args[0].to_i, 100].min
+    max_size = 33 unless max_size.positive?
+
+    min_size, max_size = [max_size, min_size] if min_size > max_size
+
+    chunk = rand(min_size..max_size).times.map do
+      keyboard[(keyboard.size * (rand**3)).floor].split('').sample
+    end
+
+    chunk.join
+  end
 end
