@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 module CommandTag::Command::TextTools
-  def handle_000_keysmash_startup(args = [100, 100])
-    @vars['keysmash'] = [handle_keysmash_with_return(args)]
-  end
-
   def handle_code_at_start(args)
     return if args.count < 2
 
@@ -70,12 +66,11 @@ module CommandTag::Command::TextTools
       't', 'x', ',',
       'q', 'z',
       'y', 'b',
-      'p', '[',
-      '.', '/',
-      ']', '\\'
+      'p', '.',
+      '[', ']'
     ]
 
-    min_size = [[1, args[1].to_i].max, 100].min
+    min_size = [[5, args[1].to_i].max, 100].min
     max_size = [args[0].to_i, 100].min
     max_size = 33 unless max_size.positive?
 
@@ -86,5 +81,9 @@ module CommandTag::Command::TextTools
     end
 
     chunk.join
+  end
+
+  def transform_keysmash_template_return(_, args)
+    handle_keysmash_with_return([args[0], args[2]])
   end
 end
