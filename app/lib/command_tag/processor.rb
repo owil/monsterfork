@@ -137,16 +137,15 @@ class CommandTag::Processor
           end
         end
 
-        index_start = to_integer(parts[1])
-        index_end   = to_integer(parts[2])
+        index       = to_integer(parts[1])
+        str_start   = to_integer(parts[2])
+        str_end     = to_integer(parts[3])
 
-        if ['all', '[]'].include?(parts[1])
-          var(name).join(separator)
-        elsif index_end.zero?
-          var(name)[index_start].presence || ''
-        else
-          var(name)[index_start..index_end].presence || ''
-        end
+        str_start, str_end = [str_end, str_start] if str_start > str_end
+
+        value = (['all', '[]'].include?(parts[1]) ? var(name).join(separator) : var(name)[index].to_s)
+
+        (str_end - str_start).zero? ? value : value[str_start..str_end]
       end
     end.rstrip
   end
