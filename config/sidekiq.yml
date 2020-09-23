@@ -37,7 +37,7 @@
     cron: '0 0 * * *'
     class: Scheduler::PgheroScheduler
   ambassador_scheduler:
-    every: '<%= ENV['AMBASSADOR_DELAY'] || 10 %>m'
+    every: '<%= ENV.fetch('AMBASSADOR_DELAY', '30m') %>'
     class: Scheduler::AmbassadorScheduler
   database_cleanup_scheduler:
     every: '1d'
