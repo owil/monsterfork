@@ -48,9 +48,9 @@ class Scheduler::AmbassadorScheduler
 
   def locally_boostable
     Status.local
-      .public_visibility
-      .without_replies
-      .without_reblogs
-      .where('statuses.created_at > ?', 18.weeks.ago)
+          .public_visibility
+          .without_replies
+          .without_reblogs
+          .where('statuses.created_at > ?', ENV.fetch('AMBASSADOR_RANGE', 14).days.ago)
   end
 end
