@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_09_23_000003) do
+ActiveRecord::Schema.define(version: 2020_09_25_035221) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -328,7 +328,6 @@ ActiveRecord::Schema.define(version: 2020_09_23_000003) do
     t.string "uri"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "public", default: false, null: false
     t.string "root"
     t.index ["uri"], name: "index_conversations_on_uri", unique: true
   end
