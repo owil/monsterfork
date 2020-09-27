@@ -193,6 +193,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   end
 
   def process_audience
+    @params[:visibility] = :unlisted if @account.silenced? && @params[:visibility] == :public
+
     (audience_to + audience_cc).uniq.each do |audience|
       next if audience == ActivityPub::TagManager::COLLECTIONS[:public]
 
@@ -204,11 +206,12 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       next if account.nil? || @mentions.any? { |mention| mention.account_id == account.id }
 
       @mentions << Mention.new(account: account, silent: true)
+      @params[:visibility] = :unlisted if account.silenced? && @params[:visibility] == :public
 
       # If there is at least one silent mention, then the status can be considered
       # as a limited-audience status, and not strictly a direct message, but only
       # if we considered a direct message in the first place
-      next unless @params[:visibility] == :direct && direct_message.nil?
+      next unless account.suspended? || (@params[:visibility] == :direct && direct_message.nil?)
 
       @params[:visibility] = :limited
     end
