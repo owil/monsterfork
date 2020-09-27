@@ -279,7 +279,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     account = account_from_uri(tag['href'])
     account = ActivityPub::FetchRemoteAccountService.new.call(tag['href']) if account.nil?
 
-    return if account.nil?
+    return (@params[:visibility] = :limited) if account.nil? || account.suspended?
 
     @mentions << Mention.new(account: account, silent: false)
   end
