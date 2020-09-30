@@ -22,6 +22,7 @@
 #  application_id         :bigint(8)
 #  in_reply_to_account_id :bigint(8)
 #  local_only             :boolean          default(FALSE), not null
+#  full_status_text       :text             default(""), not null
 #  poll_id                :bigint(8)
 #  content_type           :string
 #  deleted_at             :datetime
@@ -62,7 +63,7 @@ class Status < ApplicationRecord
   belongs_to :application, class_name: 'Doorkeeper::Application', optional: true
 
   belongs_to :account, inverse_of: :statuses
-  belongs_to :in_reply_to_account, class_name: 'Account', optional: true
+  belongs_to :in_reply_to_account, foreign_key: 'in_reply_to_account_id', class_name: 'Account', optional: true
   belongs_to :conversation, optional: true
   belongs_to :preloadable_poll, class_name: 'Poll', foreign_key: 'poll_id', optional: true
 
@@ -111,19 +112,19 @@ class Status < ApplicationRecord
   scope :without_reblogs, -> { where('statuses.reblog_of_id IS NULL') }
   scope :with_public_visibility, -> { where(visibility: :public, published: true) }
   scope :distributable, -> { where(visibility: [:public, :unlisted], published: true) }
-  scope :tagged_with, ->(tag) { joins(:statuses_tags).where(statuses_tags: { tag_id: tag }) }
+  scope :tagged_with, ->(tag_ids) { joins(:statuses_tags).where(statuses_tags: { tag_id: tag_ids }) }
   scope :in_chosen_languages, ->(account) { where(language: nil).or where(language: account.chosen_languages) }
   scope :excluding_silenced_accounts, -> { left_outer_joins(:account).where(accounts: { silenced_at: nil }) }
   scope :including_silenced_accounts, -> { left_outer_joins(:account).where.not(accounts: { silenced_at: nil }) }
   scope :not_excluded_by_account, ->(account) { where.not(account_id: account.excluded_from_timeline_account_ids) }
   scope :not_domain_blocked_by_account, ->(account) { account.excluded_from_timeline_domains.blank? ? left_outer_joins(:account) : left_outer_joins(:account).where('accounts.domain IS NULL OR accounts.domain NOT IN (?)', account.excluded_from_timeline_domains) }
-  scope :tagged_with_all, ->(tags) {
-    Array(tags).map(&:id).map(&:to_i).reduce(self) do |result, id|
+  scope :tagged_with_all, ->(tag_ids) {
+    Array(tag_ids).reduce(self) do |result, id|
       result.joins("INNER JOIN statuses_tags t#{id} ON t#{id}.status_id = statuses.id AND t#{id}.tag_id = #{id}")
     end
   }
-  scope :tagged_with_none, ->(tags) {
-    Array(tags).map(&:id).map(&:to_i).reduce(self) do |result, id|
+  scope :tagged_with_none, ->(tag_ids) {
+    Array(tag_ids).reduce(self) do |result, id|
       result.joins("LEFT OUTER JOIN statuses_tags t#{id} ON t#{id}.status_id = statuses.id AND t#{id}.tag_id = #{id}")
             .where("t#{id}.tag_id IS NULL")
     end
@@ -249,7 +250,7 @@ class Status < ApplicationRecord
   end
 
   def hidden?
-    !published? || !distributable?
+    !(published? || distributable?)
   end
 
   def distributable?
@@ -486,7 +487,7 @@ class Status < ApplicationRecord
 
       return if account_ids.empty?
 
-      accounts = Account.where(id: account_ids).includes(:account_stat).index_by(&:id)
+      accounts = Account.where(id: account_ids).includes(:account_stat).each_with_object({}) { |a, h| h[a.id] = a }
 
       cached_items.each do |item|
         item.account = accounts[item.account_id]

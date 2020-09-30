@@ -12,15 +12,16 @@ class StatusPolicy < ApplicationPolicy
   end
 
   def show?
+    return false if author.suspended?
     return false if local_only? && !current_account&.local?
     return false unless published? || owned?
 
     if requires_mention?
       owned? || mention_exists?
     elsif private?
-      owned? || following_owners? || mention_exists?
+      owned? || following_author? || mention_exists?
     else
-      current_account.nil? || !blocked_by_owners?
+      current_account.nil? || (!author_blocking? && !author_blocking_domain?)
     end
   end
 
@@ -84,34 +85,22 @@ class StatusPolicy < ApplicationPolicy
     @preloaded_relations[:blocked_by] ? @preloaded_relations[:blocked_by][author.id] : author.blocking?(current_account)
   end
 
-  def blocked_by_owners?
-    author_blocking? || author_blocking_domain?
-  end
-
   def following_author?
     return false if current_account.nil?
 
     @preloaded_relations[:following] ? @preloaded_relations[:following][author.id] : current_account.following?(author)
   end
 
-  def following_owners?
-    following_author?
-  end
-
   def author
-    @author ||= record.account
+    record.account
   end
-
+  
   def local_only?
     record.local_only?
   end
 
   def published?
     record.published?
-  end
-
-  def reply?
-    record.reply? && record.in_reply_to_account_id != author.id
   end
 
   def visibility_for_remote_domain

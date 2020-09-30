@@ -178,7 +178,7 @@ class User < ApplicationRecord
   end
 
   def active_for_authentication?
-    true
+    !account.memorial?
   end
 
   def suspicious_sign_in?(ip)
@@ -186,7 +186,7 @@ class User < ApplicationRecord
   end
 
   def functional?
-    confirmed? && approved? && !disabled? && !account.suspended?
+    confirmed? && approved? && !disabled? && !account.suspended? && !account.memorial?
   end
 
   def unconfirmed_or_pending?

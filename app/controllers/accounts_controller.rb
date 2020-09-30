@@ -7,6 +7,7 @@ class AccountsController < ApplicationController
   include AccountControllerConcern
   include SignatureAuthentication
 
+  before_action :require_signature!, if: -> { request.format == :json && authorized_fetch_mode? }
   before_action :set_cache_headers
   before_action :set_body_classes
 
@@ -56,7 +57,7 @@ class AccountsController < ApplicationController
 
       format.json do
         expires_in 3.minutes, public: !current_account?
-        render_with_cache json: @account, content_type: 'application/activity+json', serializer: ActivityPub::ActorSerializer, adapter: ActivityPub::Adapter, fields: restrict_fields_to
+        render_with_cache json: @account, content_type: 'application/activity+json', serializer: ActivityPub::ActorSerializer, adapter: ActivityPub::Adapter
       end
     end
   end
@@ -161,33 +162,12 @@ class AccountsController < ApplicationController
     request.path.split('.').first.ends_with?(Addressable::URI.parse("/tagged/#{params[:tag]}").normalize)
   end
 
-  def cached_filtered_status_page
-    cache_collection_paginated_by_id(
-      filtered_statuses,
-      Status,
-      PAGE_SIZE,
-      params_slice(:max_id, :min_id, :since_id)
-    )
-  end
-
   def reblogs_requested?
     request.path.split('.').first.ends_with?('/reblogs') && !tag_requested?
   end
 
   def mentions_requested?
     request.path.split('.').first.ends_with?('/mentions') && !tag_requested?
-  end
-
-  def params_slice(*keys)
-    params.slice(*keys).permit(*keys)
-  end
-
-  def restrict_fields_to
-    if current_account&.id == @account.id || (signed_request_account.present? && !blocked?)
-      # Return all fields
-    else
-      %i(id type preferred_username inbox public_key endpoints)
-    end
   end
 
   def blocked?
@@ -200,5 +180,18 @@ class AccountsController < ApplicationController
 
   def rss_disabled?
     @account.user&.setting_rss_disabled
+  end
+
+  def cached_filtered_status_page
+    cache_collection_paginated_by_id(
+      filtered_statuses,
+      Status,
+      PAGE_SIZE,
+      params_slice(:max_id, :min_id, :since_id)
+    )
+  end
+
+  def params_slice(*keys)
+    params.slice(*keys).permit(*keys)
   end
 end

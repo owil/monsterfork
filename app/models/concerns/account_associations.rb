@@ -61,6 +61,9 @@ module AccountAssociations
     has_and_belongs_to_many :tags
     has_many :featured_tags, -> { includes(:tag) }, dependent: :destroy, inverse_of: :account
 
+    # Account deletion requests
+    has_one :deletion_request, class_name: 'AccountDeletionRequest', inverse_of: :account, dependent: :destroy
+
     # Domain permissions
     has_many :domain_permissions, class_name: 'AccountDomainPermission', inverse_of: :account, dependent: :destroy
 

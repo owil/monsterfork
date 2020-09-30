@@ -30,7 +30,7 @@ class ProcessMentionsService < BaseService
     mentioned_account = mention.account
 
     if mentioned_account.local?
-      LocalNotificationWorker.perform_async(mentioned_account.id, mention.id, mention.class.name) unless !@status.notify? || mention.silent?
+      LocalNotificationWorker.perform_async(mentioned_account.id, mention.id, mention.class.name, :mention) unless !@status.notify? || mention.silent?
     elsif mentioned_account.activitypub? && !@status.local_only?
       ActivityPub::DeliveryWorker.perform_async(activitypub_json(mentioned_account.domain), mention.status.account_id, mentioned_account.inbox_url)
     end
