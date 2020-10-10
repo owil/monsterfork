@@ -19,8 +19,6 @@ class RemoveStatusService < BaseService
     @reblogs  = status.reblogs.includes(:account).to_a
     @options  = options
 
-    return unless status.published? || @options[:unpublished]
-
     RedisLock.acquire(lock_options) do |lock|
       if lock.acquired?
         remove_from_self if status.account.local? && !@options[:unpublish]
@@ -51,7 +49,7 @@ class RemoveStatusService < BaseService
     # original object being removed implicitly removes reblogs
     # of it. The Delete activity of the original is forwarded
     # separately.
-    return if !@account.local? || @options[:original_removed]
+    return if !@account.local? || @options[:original_removed] || !(status.published? || @options[:unpublished])
 
     remove_from_remote_followers
     remove_from_remote_affected

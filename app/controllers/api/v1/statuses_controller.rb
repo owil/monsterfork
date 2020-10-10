@@ -100,9 +100,9 @@ class Api::V1::StatusesController < Api::BaseController
     @status = Status.where(account_id: current_user.account).find(params[:id])
     authorize @status, :destroy?
 
-    if !current_user.setting_unpublish_on_delete || !@status.published? || truthy_param?(:redraft)
+    if !(current_user.setting_unpublish_on_delete && @status.published?) || truthy_param?(:redraft)
       @status.discard
-      RemovalWorker.perform_async(@status.id, redraft: true, immediate: !current_user.setting_unpublish_on_delete)
+      RemovalWorker.perform_async(@status.id, redraft: true, unpublished: true)
       @status.account.statuses_count = @status.account.statuses_count - 1
     else
       RemovalWorker.perform_async(@status.id, redraft: true, unpublish: true)
