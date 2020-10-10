@@ -9,7 +9,6 @@ class Api::V1::Statuses::BookmarksController < Api::BaseController
 
   def create
     current_account.bookmarks.find_or_create_by!(account: current_account, status: @status)
-    curate! unless @status.curated? || !@status.published?
     render json: @status, serializer: REST::StatusSerializer
   end
 
@@ -37,10 +36,5 @@ class Api::V1::Statuses::BookmarksController < Api::BaseController
     authorize @status, :show?
   rescue Mastodon::NotPermittedError
     not_found
-  end
-
-  def curate!
-    @status.curate!
-    DistributionWorker.perform_async(@status.id)
   end
 end

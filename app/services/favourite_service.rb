@@ -16,7 +16,6 @@ class FavouriteService < BaseService
     return favourite unless favourite.nil?
 
     favourite = Favourite.create!(account: account, status: status)
-    curate!(status) unless status.curated? || !status.published?
 
     create_notification(favourite)
     bump_potential_friendship(account, status)
@@ -44,10 +43,5 @@ class FavouriteService < BaseService
 
   def build_json(favourite)
     Oj.dump(serialize_payload(favourite, ActivityPub::LikeSerializer))
-  end
-
-  def curate!(status)
-    status.curate!
-    DistributionWorker.perform_async(status.id)
   end
 end
