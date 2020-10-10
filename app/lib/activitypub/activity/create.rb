@@ -91,7 +91,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
       @status = UpdateStatusService.new.call(@status, @params, @mentions, @tags)
       resolve_thread(@status)
-      fetch_replies(@status)
+      fetch_replies(@status) unless @account.silenced?
       return @status
     end
 
@@ -106,7 +106,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     end
 
     resolve_thread(@status)
-    fetch_replies(@status)
+    fetch_replies(@status) unless @account.silenced?
     check_for_spam
     distribute(@status)
     forward_for_reply
