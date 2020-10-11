@@ -39,7 +39,7 @@ class SuspendAccountService < BaseService
         styles.each do |style|
           case Paperclip::Attachment.default_options[:storage]
           when :s3
-            attachment.s3_object(style).acl.put(:private)
+            attachment.s3_object(style).acl.put({ acl: 'private' })
           when :fog
             # Not supported
           when :filesystem
