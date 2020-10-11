@@ -128,7 +128,7 @@ class FeedManager
     unpush_from_direct(account, status) if status.direct_visibility?
 
     account.lists_for_local_distribution.select(:id, :account_id).each do |list|
-      unpush_from_list(list, status, list.reblogs? && list.account.user&.aggregates_reblogs?)
+      unpush_from_list(list, status)
     end
   end
 
