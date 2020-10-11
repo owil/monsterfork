@@ -183,6 +183,7 @@ class Status < ApplicationRecord
     0, 1, 2, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 4320, 7200,
     10_080, 20_160, 30_240, 60_480, 120_960, 181_440, 241_920, 362_880, 524_160
   ].freeze
+  HISTORY_VALUES = [0, 1, 2, 3, 6, 12, 18, 24, 36, 52, 104, 156].freeze
 
   def searchable_by(preloaded = nil)
     ids = []
@@ -569,6 +570,11 @@ class Status < ApplicationRecord
         else
           query = query.without_replies
         end
+      end
+
+      if target_account.id != account&.id && target_account&.user&.max_history_public.present?
+        history_limit = account.following?(target_account) ? target_account.user.max_history_private : target_account.user.max_history_public
+        query = query.where('statuses.updated_at >= ?', history_limit.weeks.ago) if history_limit.positive?
       end
 
       return query if options[:tag].blank?

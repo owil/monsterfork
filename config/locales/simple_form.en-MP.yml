@@ -29,6 +29,8 @@ en-MP:
         setting_filter_unknown: Strictly filter unfollowed authors, including those of boosts, from your home and list timelines.  Takes effect for newly-pushed items.
         setting_no_boosts_home: Filters boosts from the home timeline, reguardless of the app you use.  These boosts will still be available in the Boosts list.
         setting_manual_publish: This allows you to draft, proofread, and edit your roars before publishing them.  You can publish a roar from its <strong>action menu</strong> (the three dots).
+        setting_max_history_public: How long public users and other servers may directly access roars on your public profile or ActivityPub outbox.
+        setting_max_history_private: How long followers may directly access roars from your public profile or ActivityPub outbox. Takes precedence if shorter than the public setting. 
         setting_rss_disabled: Improves privacy by turning off your account's public RSS feed.
         setting_show_application: The application you use to toot will be displayed in the detailed view of your roars
         setting_skin: Reskins the selected UI flavour
@@ -57,6 +59,8 @@ en-MP:
         setting_favourite_modal: Show confirmation dialog before admiring (applies to Glitch flavour only)
         setting_filter_unknown: Filter unfollowed authors
         setting_manual_publish: Manually publish roars
+        setting_max_history_public: Roar history visible to public
+        setting_max_history_private: Roar history visible to followers
         setting_no_boosts_home: Disable boosts in home timeline
         setting_publish_in: Auto-publish
         setting_show_application: Disclose application used to send roars

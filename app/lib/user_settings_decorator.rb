@@ -64,6 +64,8 @@ class UserSettingsDecorator
     user.settings['unpublish_on_delete'] = unpublish_on_delete_preference if change?('setting_unpublish_on_delete')
     user.settings['rss_disabled']        = rss_disabled_preference if change?('setting_rss_disabled')
     user.settings['no_boosts_home']      = no_boosts_home_preference if change?('setting_no_boosts_home')
+    user.settings['max_history_public']  = max_history_public_preference if change?('setting_max_history_public')
+    user.settings['max_history_private'] = max_history_private_preference if change?('setting_max_history_private')
   end
 
   def merged_notification_emails
@@ -244,6 +246,14 @@ class UserSettingsDecorator
 
   def no_boosts_home_preference
     boolean_cast_setting 'setting_no_boosts_home'
+  end
+
+  def max_history_public_preference
+    settings['setting_max_history_public'].to_i
+  end
+
+  def max_history_private_preference
+    settings['setting_max_history_private'].to_i
   end
 
   def boolean_cast_setting(key)

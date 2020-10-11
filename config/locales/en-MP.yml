@@ -100,7 +100,7 @@ en-MP:
     archive_takeout:
       hint_html: You can request an archive of your <strong>roars and media</strong>. The exported data will be in the ActivityPub format, readable by any compliant software. You can request an archive every 7 days.
   history:
-    '0': Never
+    '0': All
     1: 1 week
     2: 2 weeks
     3: 3 weeks

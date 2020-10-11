@@ -9,6 +9,14 @@
 
   %h4= t 'preferences.privacy'
 
+  .fields-row
+    .fields-group.fields-row__column.fields-row__column-6
+      = f.input :setting_max_history_public, collection: Status::HISTORY_VALUES, wrapper: :with_label, label_method: lambda { |m| I18n.t("history.#{m}") }, required: false, include_blank: false
+
+    .fields-group.fields-row__column.fields-row__column-6
+      = f.input :setting_max_history_private, collection: Status::HISTORY_VALUES, wrapper: :with_label, label_method: lambda { |m| I18n.t("history.#{m}") }, required: false, include_blank: false
+
+
   .fields-group
     = f.input :setting_default_privacy, collection: Status.selectable_visibilities, wrapper: :with_label, include_blank: false, label_method: lambda { |visibility| safe_join([I18n.t("statuses.visibilities.#{visibility}"), I18n.t("statuses.visibilities.#{visibility}_long")], ' - ') }, required: false, hint: false
 
