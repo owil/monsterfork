@@ -124,6 +124,7 @@ class User < ApplicationRecord
            :style_wide_media,
            :publish_in, :unpublish_in, :unpublish_delete, :boost_every, :boost_jitter,
            :boost_random, :unpublish_on_delete, :rss_disabled, :no_boosts_home,
+           :filter_unknown,
            to: :settings, prefix: :setting, allow_nil: false
 
   attr_reader :invite_code, :sign_in_token_attempt
@@ -264,6 +265,10 @@ class User < ApplicationRecord
 
   def disables_home_reblogs?
     @disables_home_reblogs ||= settings.no_boosts_home
+  end
+
+  def filters_unknown?
+    @filters_unknown ||= settings.filter_unknown
   end
 
   # rubocop:disable Naming/MethodParameterName

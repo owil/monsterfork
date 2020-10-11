@@ -39,9 +39,9 @@ class FeedManager
   def filter?(timeline_type, status, receiver)
     case timeline_type
     when :home
-      filter_from_home?(status, receiver.id, build_crutches(receiver.id, [status]))
+      filter_from_home?(status, receiver.id, build_crutches(receiver.id, [status]), receiver.user&.filters_unknown?)
     when :list
-      filter_from_list?(status, receiver) || filter_from_home?(status, receiver.account_id, build_crutches(receiver.account_id, [status]))
+      filter_from_list?(status, receiver) || filter_from_home?(status, receiver.account_id, build_crutches(receiver.account_id, [status]), receiver.user&.filters_unknown?)
     when :mentions
       filter_from_mentions?(status, receiver.id)
     when :direct
@@ -148,6 +148,7 @@ class FeedManager
     timeline_key = key(:home, into_account.id)
     aggregate    = into_account.user&.aggregates_reblogs?
     no_reblogs   = into_account.user&.disables_home_reblogs?
+    no_unknown   = into_account.user&.filters_unknown?
     query        = from_account.statuses.where(visibility: [:public, :unlisted, :private]).includes(:preloadable_poll, reblog: :account).limit(FeedManager::MAX_ITEMS / 4)
 
     if redis.zcard(timeline_key) >= FeedManager::MAX_ITEMS / 4
@@ -159,7 +160,7 @@ class FeedManager
     crutches = build_crutches(into_account.id, statuses)
 
     statuses.each do |status|
-      next if filter_from_home?(status, into_account.id, crutches)
+      next if filter_from_home?(status, into_account.id, crutches, no_unknown)
 
       add_to_feed(:home, into_account.id, status, aggregate, no_reblogs)
     end
@@ -175,6 +176,7 @@ class FeedManager
     timeline_key = key(:list, list.id)
     aggregate    = list.account.user&.aggregates_reblogs?
     no_reblogs   = list.account.user&.disables_home_reblogs?
+    no_unknown   = list.account.user&.filters_unknown?
     query        = from_account.statuses.where(visibility: [:public, :unlisted, :private]).includes(:preloadable_poll, reblog: :account).limit(FeedManager::MAX_ITEMS / 4)
 
     if redis.zcard(timeline_key) >= FeedManager::MAX_ITEMS / 4
@@ -186,7 +188,7 @@ class FeedManager
     crutches = build_crutches(list.account_id, statuses)
 
     statuses.each do |status|
-      next if filter_from_home?(status, list.account_id, crutches) || filter_from_list?(status, list)
+      next if filter_from_home?(status, list.account_id, crutches, no_unknown) || filter_from_list?(status, list)
 
       add_to_feed(:list, list.id, status, aggregate, no_reblogs)
     end
@@ -276,7 +278,7 @@ class FeedManager
         crutches = build_crutches(account.id, statuses)
 
         statuses.each do |status|
-          next if filter_from_list?(status, account.id) || filter_from_home?(status, account.id, crutches)
+          next if filter_from_list?(status, account.id) || filter_from_home?(status, account.id, crutches, account.user&.filters_unknown?)
 
           add_to_feed(:list, list.id, status, list.account.user&.aggregates_reblogs?, !list.reblogs?)
         end
@@ -293,6 +295,7 @@ class FeedManager
     limit        = FeedManager::MAX_ITEMS / 2
     aggregate    = account.user&.aggregates_reblogs?
     no_reblogs   = account.user&.disables_home_reblogs?
+    no_unknown   = account.user&.filters_unknown?
     timeline_key = key(:home, account.id)
 
     account.statuses.limit(limit).each do |status|
@@ -314,7 +317,7 @@ class FeedManager
       crutches = build_crutches(account.id, statuses)
 
       statuses.each do |status|
-        next if filter_from_home?(status, account.id, crutches)
+        next if filter_from_home?(status, account.id, crutches, no_unknown)
 
         add_to_feed(:home, account.id, status, aggregate, no_reblogs, false)
       end
@@ -403,7 +406,7 @@ class FeedManager
   # @param [Integer] receiver_id
   # @param [Hash] crutches
   # @return [Boolean]
-  def filter_from_home?(status, receiver_id, crutches)
+  def filter_from_home?(status, receiver_id, crutches, followed_only = false)
     return false if receiver_id == status.account_id
     return true  if !status.published? || crutches[:hiding_thread][status.conversation_id]
     return true  if status.reply? && (status.in_reply_to_id.nil? || status.in_reply_to_account_id.nil?)
@@ -431,7 +434,7 @@ class FeedManager
       return !!should_filter
     elsif status.reblog? # ...it's a boost and...
       # ...you don't follow the OP and they're non-local or they're silenced...
-      should_filter = !(crutches[:local][status.reblog.account_id] || crutches[:following][status.reblog.account_id])
+      should_filter = followed_only && !crutches[:following][status.reblog.account_id]
 
       # ..or you're hiding boosts from them...
       should_filter ||= crutches[:hiding_reblogs][status.account_id]
@@ -561,7 +564,7 @@ class FeedManager
 
     if status.reblog?
       add_to_reblogs(account_id, status, aggregate_reblogs, stream) if timeline_type == :home
-      return false if skip_reblogs
+      return false if skip_reblogs || (timeline_type == :home && !status.reblog.local?)
     end
 
     if status.reblog? && (aggregate_reblogs.nil? || aggregate_reblogs)
@@ -666,7 +669,6 @@ class FeedManager
     crutches[:domain_blocking] = AccountDomainBlock.where(account_id: receiver_id, domain: statuses.map { |s| s.reblog&.account&.domain }.compact).pluck(:domain).each_with_object({}) { |domain, mapping| mapping[domain] = true }
     crutches[:blocked_by]      = Block.where(target_account_id: receiver_id, account_id: statuses.map { |s| s.reblog&.account_id }.compact).pluck(:account_id).each_with_object({}) { |id, mapping| mapping[id] = true }
     crutches[:hiding_thread]   = ConversationMute.where(account_id: receiver_id, conversation_id: statuses.map(&:conversation_id).compact).pluck(:conversation_id).each_with_object({}) { |id, mapping| mapping[id] = true }
-    crutches[:local]           = Account.local.where(id: participants, silenced_at: nil, suspended_at: nil).pluck(:id).each_with_object({}) { |id, mapping| mapping[id] = true }
 
     crutches
   end

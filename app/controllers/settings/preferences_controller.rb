@@ -5,7 +5,6 @@ class Settings::PreferencesController < Settings::BaseController
 
   def update
     if user_settings.update(user_settings_params.to_h)
-      Rails.cache.delete("filter_settings:#{current_user.account_id}")
       ClearReblogsWorker.perform_async(current_user.account_id) if current_user.disables_home_reblogs?
     end
 
@@ -72,6 +71,7 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_boost_every,
       :setting_boost_jitter,
       :setting_boost_random,
+      :setting_filter_unknown,
       :setting_unpublish_on_delete,
       :setting_rss_disabled,
       :setting_no_boosts_home,

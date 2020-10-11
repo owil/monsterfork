@@ -99,6 +99,19 @@ en-MP:
   exports:
     archive_takeout:
       hint_html: You can request an archive of your <strong>roars and media</strong>. The exported data will be in the ActivityPub format, readable by any compliant software. You can request an archive every 7 days.
+  history:
+    '0': Never
+    1: 1 week
+    2: 2 weeks
+    3: 3 weeks
+    6: 6 weeks
+    12: 12 weeks
+    18: 18 weeks
+    24: 24 weeks
+    36: 36 weeks
+    52: 52 weeks
+    104: 104 weeks
+    156: 156 weeks
   notification_mailer:
     favourite:
       body: 'Your status was admired by %{name}:'
