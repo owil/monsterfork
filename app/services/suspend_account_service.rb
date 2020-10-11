@@ -37,6 +37,8 @@ class SuspendAccountService < BaseService
         styles     = [:original] | attachment.styles.keys
 
         styles.each do |style|
+          next if attachment.path(style).blank?
+
           case Paperclip::Attachment.default_options[:storage]
           when :s3
             attachment.s3_object(style).acl.put({ acl: 'private' })
