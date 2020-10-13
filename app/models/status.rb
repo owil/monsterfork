@@ -573,7 +573,7 @@ class Status < ApplicationRecord
       end
 
       if target_account.id != account&.id && target_account&.user&.max_history_public.present?
-        history_limit = account.following?(target_account) ? target_account.user.max_history_private : target_account.user.max_history_public
+        history_limit = account&.following?(target_account) ? target_account.user.max_history_private : target_account.user.max_history_public
         query = query.where('statuses.updated_at >= ?', history_limit.weeks.ago) if history_limit.positive?
       end
 
