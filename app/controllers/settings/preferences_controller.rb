@@ -4,8 +4,10 @@ class Settings::PreferencesController < Settings::BaseController
   def show; end
 
   def update
+    old_home_reblogs = current_user.home_reblogs?
+  
     if user_settings.update(user_settings_params.to_h)
-      ClearReblogsWorker.perform_async(current_user.account_id) if current_user.disables_home_reblogs?
+      ClearReblogsWorker.perform_async(current_user.account_id) unless old_home_reblogs == current_user.home_reblogs? || current_user.home_reblogs?
     end
 
     if current_user.update(user_params)
@@ -51,7 +53,6 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_noindex,
       :setting_hide_network,
       :setting_hide_followers_count,
-      :setting_aggregate_reblogs,
       :setting_show_application,
       :setting_advanced_layout,
       :setting_default_content_type,
@@ -74,7 +75,7 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_filter_unknown,
       :setting_unpublish_on_delete,
       :setting_rss_disabled,
-      :setting_no_boosts_home,
+      :setting_home_reblogs,
       :setting_max_history_public,
       :setting_max_history_private,
       notification_emails: %i(follow follow_request reblog favourite mention digest report pending_account trending_tag),

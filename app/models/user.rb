@@ -116,14 +116,14 @@ class User < ApplicationRecord
 
   delegate :auto_play_gif, :default_sensitive, :unfollow_modal, :boost_modal, :favourite_modal, :delete_modal,
            :reduce_motion, :system_font_ui, :noindex, :flavour, :skin, :display_media, :hide_network, :hide_followers_count,
-           :expand_spoilers, :default_language, :aggregate_reblogs, :show_application,
+           :expand_spoilers, :default_language, :show_application,
            :advanced_layout, :use_blurhash, :use_pending_items, :trends, :crop_images,
            :default_content_type, :system_emoji_font,
            :manual_publish, :style_dashed_nest, :style_underline_a, :style_css_profile,
            :style_css_profile_errors, :style_css_webapp, :style_css_webapp_errors,
            :style_wide_media,
            :publish_in, :unpublish_in, :unpublish_delete, :boost_every, :boost_jitter,
-           :boost_random, :unpublish_on_delete, :rss_disabled, :no_boosts_home,
+           :boost_random, :unpublish_on_delete, :rss_disabled, :home_reblogs,
            :filter_unknown, :max_history_public, :max_history_private,
            to: :settings, prefix: :setting, allow_nil: false
 
@@ -255,16 +255,12 @@ class User < ApplicationRecord
     @hides_network ||= settings.hide_network
   end
 
-  def aggregates_reblogs?
-    @aggregates_reblogs ||= settings.aggregate_reblogs
-  end
-
   def shows_application?
     @shows_application ||= settings.show_application
   end
 
-  def disables_home_reblogs?
-    @disables_home_reblogs ||= settings.no_boosts_home
+  def home_reblogs?
+    @home_reblogs ||= settings.home_reblogs
   end
 
   def filters_unknown?

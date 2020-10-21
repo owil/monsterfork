@@ -24,7 +24,7 @@
   "column.public": "Fediverse",
   "column.toot": "Roars & Growls",
   "community.column_settings.local_only": "Monsterpit only",
-  "community.column_settings.remote_only": "Rowdy tavern mode",
+  "community.column_settings.remote_only": "Rowdy Tavern mode",
   "compose_form.clear": "Double-click to clear",
   "compose_form.direct_message_warning": "This roar will only be sent to the mentioned creatures.",
   "compose_form.hashtag_warning": "This roar won't be listed under any hashtag as it is unlisted. Only public roars can be searched by hashtag.",
