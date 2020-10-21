@@ -11,12 +11,17 @@ class AfterBlockDomainFromAccountService < BaseService
     @domain  = domain
 
     clear_notifications!
+    defederate_from_domain!
     remove_follows!
     reject_existing_followers!
     reject_pending_follow_requests!
   end
 
   private
+
+  def defederate_from_domain!
+    DefederateAccountService.new.call(@account, domain)
+  end
 
   def remove_follows!
     @account.active_relationships.where(target_account: Account.where(domain: @domain)).includes(:target_account).reorder(nil).find_each do |follow|

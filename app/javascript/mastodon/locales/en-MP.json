@@ -39,6 +39,7 @@
   "confirmations.publish.confirm": "Publish",
   "confirmations.publish.message": "Are you ready to publish your roar?",
   "confirmations.redraft.message": "Are you sure you want to delete and redraft this roar? Admirations and boosts will be lost, and replies to the original roar will be orphaned.",
+  "confirmations.domain_block.message": "You are about to block and defederate from the {domain} server.  If you proceed, Monsterpit will ask this server to permanently delete any data associated with your account.",
   "content-type.change": "Content type",
   "directory.federated": "From Fediverse",
   "directory.local": "From Monsterpit",
