@@ -45,8 +45,8 @@ class AfterBlockService < BaseService
 
   def defederate_favourites!
     favourites = @account.favourites.joins(:status).where(statuses: { account_id: @target_account.id })
-    favourites.select(:status_id).find_each do |favourite|
-      UnfavouriteWorker.perform_async(@account.id, favourite.status_id)
+    favourites.pluck(:status_id).each do |status_id|
+      UnfavouriteWorker.perform_async(@account.id, status_id)
     end
   end
 end
