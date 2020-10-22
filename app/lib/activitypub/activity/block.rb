@@ -11,7 +11,7 @@ class ActivityPub::Activity::Block < ActivityPub::Activity
       return
     end
 
-    UnfollowService.new.call(target_account, @account) if target_account.following?(@account)
+    BlockService.new.call(target_account, @account)
 
     @account.block!(target_account, uri: @json['id']) unless delete_arrived_first?(@json['id'])
   end
