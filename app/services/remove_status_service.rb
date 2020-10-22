@@ -33,12 +33,7 @@ class RemoveStatusService < BaseService
         remove_from_spam_check unless @options[:unpublish]
         remove_media unless @options[:unpublish]
 
-        if @options[:immediate] || !(@options[:unpublish] || @status.reported?)
-          @status.destroy!
-        else
-          @status.update(published: false, expires_at: nil, local_only: @status.local?)
-          DistributionWorker.perform_async(@status.id) if @status.local?
-        end
+        @status.destroy! if @options[:immediate] || !(@options[:unpublish] || @status.reported?)
       else
         raise Mastodon::RaceConditionError
       end
@@ -54,6 +49,11 @@ class RemoveStatusService < BaseService
     remove_from_remote_followers
     remove_from_remote_affected
     remove_from_remote_shared
+
+    return unless @options[:unpublish]
+
+    @status.update(published: false, expires_at: nil, local_only: @status.local?)
+    DistributionWorker.perform_async(@status.id) if @status.local?
   end
 
   private
