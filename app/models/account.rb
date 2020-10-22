@@ -361,6 +361,12 @@ class Account < ApplicationRecord
     shared_inbox_url.presence || inbox_url
   end
 
+  def synchronization_uri_prefix
+    return 'local' if local?
+
+    @synchronization_uri_prefix ||= uri[/http(s?):\/\/[^\/]+\//]
+  end
+
   def max_visibility_for_domain(domain)
     return 'public' if domain.blank?
 

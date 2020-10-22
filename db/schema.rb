@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_09_25_035221) do
+ActiveRecord::Schema.define(version: 2020_10_08_220312) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -521,6 +521,15 @@ ActiveRecord::Schema.define(version: 2020_09_25_035221) do
     t.index ["user_id"], name: "index_invites_on_user_id"
   end
 
+  create_table "ip_blocks", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "expires_at"
+    t.inet "ip", default: "0.0.0.0", null: false
+    t.integer "severity", default: 0, null: false
+    t.text "comment", default: "", null: false
+  end
+
   create_table "list_accounts", force: :cascade do |t|
     t.bigint "list_id", null: false
     t.bigint "account_id", null: false
@@ -597,6 +606,7 @@ ActiveRecord::Schema.define(version: 2020_09_25_035221) do
     t.boolean "hide_notifications", default: true, null: false
     t.bigint "account_id", null: false
     t.bigint "target_account_id", null: false
+    t.datetime "expires_at"
     t.boolean "timelines_only", default: false, null: false
     t.index ["account_id", "target_account_id"], name: "index_mutes_on_account_id_and_target_account_id", unique: true
     t.index ["target_account_id"], name: "index_mutes_on_target_account_id"
@@ -1000,6 +1010,7 @@ ActiveRecord::Schema.define(version: 2020_09_25_035221) do
     t.string "username"
     t.string "kobold"
     t.string "webauthn_id"
+    t.inet "sign_up_ip"
     t.index "lower((username)::text)", name: "index_on_users_username_lowercase", unique: true
     t.index ["account_id"], name: "index_users_on_account_id"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true

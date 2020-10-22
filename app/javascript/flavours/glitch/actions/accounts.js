@@ -274,11 +274,11 @@ export function unblockAccountFail(error) {
 };
 
 
-export function muteAccount(id, notifications, timelinesOnly) {
+export function muteAccount(id, notifications, timelinesOnly, duration=0) {
   return (dispatch, getState) => {
     dispatch(muteAccountRequest(id));
 
-    api(getState).post(`/api/v1/accounts/${id}/mute`, { notifications, timelinesOnly }).then(response => {
+    api(getState).post(`/api/v1/accounts/${id}/mute`, { notifications, timelinesOnly, duration }).then(response => {
       // Pass in entire statuses map so we can use it to filter stuff in different parts of the reducers
       dispatch(muteAccountSuccess(response.data, getState().get('statuses')));
     }).catch(error => {

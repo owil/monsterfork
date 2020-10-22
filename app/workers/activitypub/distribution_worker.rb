@@ -15,7 +15,7 @@ class ActivityPub::DistributionWorker
     return if skip_distribution?
 
     ActivityPub::DeliveryWorker.push_bulk(inboxes) do |inbox_url|
-      [payload(Addressable::URI.parse(inbox_url).host), @account.id, inbox_url]
+      [payload(Addressable::URI.parse(inbox_url).host), @account.id, inbox_url, { synchronize_followers: !@status.distributable? }]
     end
 
     relay! if relayable?
