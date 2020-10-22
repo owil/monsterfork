@@ -50,6 +50,8 @@ class RemoveStatusService < BaseService
     remove_from_remote_affected
     remove_from_remote_shared
 
+    @status.mentions.where(account_id: @options[:blocking]).destroy_all if @options[:blocking]
+
     return unless @options[:unpublish]
 
     @status.update(published: false, expires_at: nil, local_only: @status.local?)

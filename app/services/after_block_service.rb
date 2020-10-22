@@ -8,8 +8,9 @@ class AfterBlockService < BaseService
     clear_home_feed!
     clear_notifications!
     clear_conversations!
-    unlink_replies!
-    unlink_mentions!
+
+    defederate_interactions!
+    unlink_interactions!
   end
 
   private
@@ -26,15 +27,26 @@ class AfterBlockService < BaseService
     Notification.where(account: @account).where(from_account: @target_account).in_batches.delete_all
   end
 
-  def unlink_replies!
-    @target_account.statuses.where(in_reply_to_account_id: @account.id)
-                   .or(@account.statuses.where(in_reply_to_account_id: @target_account.id))
-                   .in_batches.update_all(in_reply_to_account_id: nil)
+  def unlink_interactions!
+    @target_account.statuses.where(in_reply_to_account_id: @account.id).in_batches.update_all(in_reply_to_account_id: nil)
+    @target_account.mentions.where(account_id: @account.id).in_batches.destroy_all
   end
 
-  def unlink_mentions!
-    @account.mentions.where(account_id: @target_account.id)
-            .or(@target_account.mentions.where(account_id: @account.id))
-            .in_batches.destroy_all
+  def defederate_interactions!
+    defederate_statuses!(@account.statuses.where(in_reply_to_account_id: @target_account.id))
+    defederate_statuses!(@account.statuses.joins(:mentions).where(mentions: { account_id: @target_account.id }))
+    defederate_statuses!(@account.statuses.joins(:reblog).where(reblogs_statuses: { account_id: @target_account.id }))
+    defederate_favourites!
+  end
+
+  def defederate_statuses!(statuses)
+    statuses.find_each { |status| RemovalWorker.perform_async(status.id, unpublish: true, blocking: @target_account.id) }
+  end
+
+  def defederate_favourites!
+    favourites = @account.favourites.joins(:status).where(statuses: { account_id: @target_account.id })
+    favourites.select(:status_id).find_each do |favourite|
+      UnfavouriteWorker.perform_async(@account.id, favourite.status_id)
+    end
   end
 end
