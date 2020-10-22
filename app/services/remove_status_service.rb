@@ -33,7 +33,7 @@ class RemoveStatusService < BaseService
         remove_from_spam_check unless @options[:unpublish]
         remove_media unless @options[:unpublish]
 
-        @status.destroy! if @options[:immediate] || !(@options[:unpublish] || @status.reported?)
+        @status.destroy! if @options[:immediate] || !((@options[:unpublish] && @status.local?) || @status.reported?)
       else
         raise Mastodon::RaceConditionError
       end
