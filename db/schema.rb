@@ -522,12 +522,12 @@ ActiveRecord::Schema.define(version: 2020_10_08_220312) do
   end
 
   create_table "ip_blocks", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.datetime "expires_at"
     t.inet "ip", default: "0.0.0.0", null: false
     t.integer "severity", default: 0, null: false
+    t.datetime "expires_at"
     t.text "comment", default: "", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "list_accounts", force: :cascade do |t|
@@ -606,8 +606,8 @@ ActiveRecord::Schema.define(version: 2020_10_08_220312) do
     t.boolean "hide_notifications", default: true, null: false
     t.bigint "account_id", null: false
     t.bigint "target_account_id", null: false
-    t.datetime "expires_at"
     t.boolean "timelines_only", default: false, null: false
+    t.datetime "expires_at"
     t.index ["account_id", "target_account_id"], name: "index_mutes_on_account_id_and_target_account_id", unique: true
     t.index ["target_account_id"], name: "index_mutes_on_target_account_id"
   end
