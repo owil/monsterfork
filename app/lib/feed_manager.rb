@@ -475,6 +475,10 @@ class FeedManager
     should_filter
   end
 
+  def following?(account_id, target_account_id)
+    Follow.where(account_id: account_id, target_account_id: target_account_id).exists?
+  end
+
   def relationship_exists?(account_id, target_account_id)
     Follow.where(account_id: account_id, target_account_id: target_account_id)
           .or(Follow.where(account_id: target_account_id, target_account_id: account_id))
@@ -562,7 +566,7 @@ class FeedManager
 
     if status.reblog?
       add_to_reblogs(account_id, status, stream) if timeline_type == :home
-      return false unless home_reblogs || (timeline_type == :home && status.reblog.local?)
+      return false unless home_reblogs || (timeline_type == :home && (status.reblog.local? || following?(account_id, status.reblog.account_id)))
     end
 
     if status.reblog?
