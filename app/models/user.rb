@@ -183,7 +183,7 @@ class User < ApplicationRecord
   end
 
   def suspicious_sign_in?(ip)
-    !otp_required_for_login? && current_sign_in_at.present? && current_sign_in_at < 2.weeks.ago && !recent_ip?(ip)
+    !otp_required_for_login? && current_sign_in_at.present? && current_sign_in_at < 12.weeks.ago && !recent_ip?(ip)
   end
 
   def functional?
