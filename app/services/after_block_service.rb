@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
 class AfterBlockService < BaseService
-  def call(account, target_account)
+  def call(account, target_account, defederate: true)
     @account        = account
     @target_account = target_account
 
     clear_home_feed!
     clear_notifications!
     clear_conversations!
+
+    return unless defederate
 
     defederate_interactions!
     unlink_interactions!

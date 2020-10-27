@@ -7,7 +7,7 @@ class MuteService < BaseService
     mute = account.mute!(target_account, notifications: notifications, timelines_only: timelines_only, duration: duration)
 
     if mute.hide_notifications?
-      BlockWorker.perform_async(account.id, target_account.id)
+      BlockWorker.perform_async(account.id, target_account.id, defederate: false)
     else
       MuteWorker.perform_async(account.id, target_account.id)
     end
