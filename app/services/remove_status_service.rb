@@ -48,7 +48,6 @@ class RemoveStatusService < BaseService
 
     remove_from_remote_followers
     remove_from_remote_affected
-    remove_from_remote_shared
 
     @status.mentions.where(account_id: @options[:blocking]).destroy_all if @options[:blocking]
 
@@ -106,6 +105,10 @@ class RemoveStatusService < BaseService
       [signed_activity_json, @account.id, inbox_url]
     end
 
+    ActivityPub::DeliveryWorker.push_bulk(@account.following.inboxes) do |inbox_url|
+      [signed_activity_json, @account.id, inbox_url]
+    end
+
     relay! if relayable?
   end
 
@@ -116,12 +119,6 @@ class RemoveStatusService < BaseService
   def relay!
     ActivityPub::DeliveryWorker.push_bulk(Relay.enabled.pluck(:inbox_url)) do |inbox_url|
       [signed_activity_json(Addressable::URI.parse(inbox_url).host), @account.id, inbox_url]
-    end
-  end
-
-  def remove_from_remote_shared
-    ActivityPub::DeliveryWorker.push_bulk(Account.remote.activitypub.where.not(shared_inbox_url: '').distinct.select(:shared_inbox_url).pluck(:shared_inbox_url)) do |inbox_url|
-      [signed_activity_json, @account.id, inbox_url]
     end
   end
 
