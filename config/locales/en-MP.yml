@@ -112,6 +112,8 @@ en-MP:
     52: 52 weeks
     104: 104 weeks
     156: 156 weeks
+  notifications:
+    web_settings: "Web interface options"
   notification_mailer:
     favourite:
       body: 'Your status was admired by %{name}:'

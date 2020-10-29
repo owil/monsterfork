@@ -79,6 +79,7 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_home_reblogs,
       :setting_max_history_public,
       :setting_max_history_private,
+      :setting_web_push,
       notification_emails: %i(follow follow_request reblog favourite mention digest report pending_account trending_tag),
       interactions: %i(must_be_follower must_be_following must_be_following_dm)
     )

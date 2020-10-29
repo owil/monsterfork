@@ -13,7 +13,7 @@ import { defineMessages } from 'react-intl';
 import { List as ImmutableList } from 'immutable';
 import { unescapeHTML } from 'flavours/glitch/util/html';
 import { getFiltersRegex } from 'flavours/glitch/selectors';
-import { usePendingItems as preferPendingItems } from 'flavours/glitch/util/initial_state';
+import { usePendingItems as preferPendingItems, webPushEnabled } from 'flavours/glitch/util/initial_state';
 import compareId from 'flavours/glitch/util/compare_id';
 import { searchTextFromRawStatus } from 'flavours/glitch/actions/importer/normalizer';
 import { requestNotificationPermission } from 'flavours/glitch/util/notifications';
@@ -336,6 +336,11 @@ export function markNotificationsAsRead() {
 // Browser support
 export function setupBrowserNotifications() {
   return dispatch => {
+    if (!webPushEnabled) {
+      dispatch(setBrowserSupport(false));
+      return;
+    }
+
     dispatch(setBrowserSupport('Notification' in window));
     if ('Notification' in window) {
       dispatch(setBrowserPermission(Notification.permission));

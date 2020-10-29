@@ -66,6 +66,7 @@ class UserSettingsDecorator
     user.settings['home_reblogs']        = home_reblogs_preference if change?('setting_home_reblogs')
     user.settings['max_history_public']  = max_history_public_preference if change?('setting_max_history_public')
     user.settings['max_history_private'] = max_history_private_preference if change?('setting_max_history_private')
+    user.settings['web_push']            = web_push_preferences if change?('setting_web_push')
   end
 
   def merged_notification_emails
@@ -254,6 +255,10 @@ class UserSettingsDecorator
 
   def max_history_private_preference
     settings['setting_max_history_private'].to_i
+  end
+
+  def web_push_preferences
+    boolean_cast_setting 'setting_web_push'
   end
 
   def boolean_cast_setting(key)

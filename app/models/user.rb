@@ -125,7 +125,7 @@ class User < ApplicationRecord
            :style_wide_media,
            :publish_in, :unpublish_in, :unpublish_delete, :boost_every, :boost_jitter,
            :boost_random, :unpublish_on_delete, :rss_disabled, :home_reblogs,
-           :filter_unknown, :max_history_public, :max_history_private,
+           :filter_unknown, :max_history_public, :max_history_private, :web_push,
            to: :settings, prefix: :setting, allow_nil: false
 
   attr_reader :invite_code, :sign_in_token_attempt

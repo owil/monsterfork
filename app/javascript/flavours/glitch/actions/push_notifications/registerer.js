@@ -1,6 +1,8 @@
 import api from 'flavours/glitch/util/api';
+import { webPushEnabled } from 'flavours/glitch/util/initial_state';
 import { pushNotificationsSetting } from 'flavours/glitch/util/settings';
 import { setBrowserSupport, setSubscription, clearSubscription } from './setter';
+
 
 // Taken from https://www.npmjs.com/package/web-push
 const urlBase64ToUint8Array = (base64String) => {
@@ -49,7 +51,7 @@ const sendSubscriptionToBackend = (getState, subscription, me) => {
 };
 
 // Last one checks for payload support: https://web-push-book.gauntface.com/chapter-06/01-non-standards-browsers/#no-payload
-const supportsPushNotifications = ('serviceWorker' in navigator && 'PushManager' in window && 'getKey' in PushSubscription.prototype);
+const supportsPushNotifications = (webPushEnabled && 'serviceWorker' in navigator && 'PushManager' in window && 'getKey' in PushSubscription.prototype);
 
 export function register () {
   return (dispatch, getState) => {

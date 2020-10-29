@@ -11,6 +11,8 @@ const initialState = element && function () {
 
 const getMeta = (prop) => initialState && initialState.meta && initialState.meta[prop];
 
+export const webPushEnabled = getMeta('web_push') === true;
+
 export const reduceMotion = getMeta('reduce_motion');
 export const autoPlayGif = getMeta('auto_play_gif');
 export const displaySensitiveMedia = getMeta('display_sensitive_media');
