@@ -51,6 +51,8 @@ en:
       other: users
     user_count_before: Home to
     what_is_mastodon: What is Mastodon?
+    registration:
+      failed_kobold: 'Your application failed our anti-spam check.  You may try registering again.  If you continue to receive this error, contact the admin at the email listed above.'
   accounts:
     choices_html: "%{name}'s choices:"
     endorsements_hint: You can endorse people you follow from the web interface, and they will show up here.

@@ -37,7 +37,7 @@ class Auth::RegistrationsController < Devise::RegistrationsController
 
   def create
     super do |resource|
-      return redirect_to root_path if resource.destroyed?
+      return redirect_to root_path, notice: I18n.t('about.registration.failed_kobold')  if resource.destroyed?
     end
   end
 
