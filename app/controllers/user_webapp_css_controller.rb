@@ -59,12 +59,24 @@ class UserWebappCssController < ApplicationController
     )
   end
 
+  def css_lowercase
+    return unless @account.user&.setting_style_lowercase
+
+    %(
+      div, button, span
+      { text-transform: lowercase; }
+
+      code, pre
+      { text-transform: initial !important; }
+    )
+  end
+
   def css_webapp
     @account.user&.setting_style_css_webapp_errors.blank? ? (@account.user&.setting_style_css_webapp || '') : ''
   end
 
   def css
-    "#{css_dashed_nest}\n#{css_underline_a}\n#{css_wide_media}\n#{css_webapp}".squish
+    "#{css_dashed_nest}\n#{css_underline_a}\n#{css_wide_media}\n#{css_lowercase}\n#{css_webapp}".squish
   end
 
   def set_account

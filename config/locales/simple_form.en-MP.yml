@@ -33,6 +33,7 @@ en-MP:
         setting_max_history_private: How long followers may directly access roars from your public profile or ActivityPub outbox. Takes precedence if shorter than the public setting. 
         setting_rss_disabled: Improves privacy by turning off your account's public RSS feed.
         setting_show_application: The application you use to toot will be displayed in the detailed view of your roars
+        setting_style_lowercase: Forces all but case-sensitive text (input fields, computer code, keycaps, etc.) to be rendered lowercase.
         setting_skin: Reskins the selected UI flavour
         setting_unpublish_on_delete: When enabled, deleting a published roar will unpublish it then make it local-only. Deleting an unpublished roar will permanently destroy it.
         setting_web_push: After changing this option, you will need to reload the Web interface tab or window if you have it open.
@@ -70,6 +71,7 @@ en-MP:
         setting_style_dashed_nest: Use dashed nest level indicators
         setting_style_underline_a: Underline hyperlinks
         setting_style_wide_media: Wide media attachments
+        setting_style_lowercase: Lowercase mode
         setting_boost_every: Automatically queue and space out boosts
         setting_boost_jitter: Add a random delay up to
         setting_boost_random: Boost in random order

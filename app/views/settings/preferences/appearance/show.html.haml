@@ -14,10 +14,8 @@
 
   %h4= t 'appearance.advanced_web_interface'
 
-  %p.hint= t 'appearance.advanced_web_interface_hint'
-
   .fields-group
-    = f.input :setting_advanced_layout, as: :boolean, wrapper: :with_label, hint: false
+    = f.input :setting_advanced_layout, as: :boolean, wrapper: :with_label, hint: t('appearance.advanced_web_interface_hint')
 
   %h4= t 'appearance.animations_and_accessibility'
 
@@ -35,6 +33,7 @@
     = f.input :setting_style_wide_media, as: :boolean, wrapper: :with_label
     = f.input :setting_style_dashed_nest, as: :boolean, wrapper: :with_label
     = f.input :setting_style_underline_a, as: :boolean, wrapper: :with_label
+    = f.input :setting_style_lowercase, as: :boolean, wrapper: :with_label
 
   %h4= t 'appearance.toot_layout'
 

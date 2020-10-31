@@ -67,6 +67,7 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_style_css_profile,
       :setting_style_css_webapp,
       :setting_style_wide_media,
+      :setting_style_lowercase,
       :setting_publish_in,
       :setting_unpublish_in,
       :setting_unpublish_delete,

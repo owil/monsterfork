@@ -81,6 +81,7 @@ en-MP:
     toot_layout: Roar layout
     custom_css: Custom CSS
     custom_css_error: "There are problems with the above CSS that must be fixed before it can be applied:"
+    advanced_web_interface: Web interface
   auth:
     description:
       prefix_invited_by_user: "@%{name} invites you to join Monsterpit!"

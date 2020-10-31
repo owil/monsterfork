@@ -54,6 +54,7 @@ class UserSettingsDecorator
     user.settings['style_css_profile']   = style_css_profile_preference if change?('setting_style_css_profile')
     user.settings['style_css_webapp']    = style_css_webapp_preference if change?('setting_style_css_webapp')
     user.settings['style_wide_media']    = style_wide_media_preference if change?('setting_style_wide_media')
+    user.settings['style_lowercase']     = style_lowercase_preference if change?('setting_style_lowercase')
     user.settings['publish_in']          = publish_in_preference if change?('setting_publish_in')
     user.settings['unpublish_in']        = unpublish_in_preference if change?('setting_unpublish_in')
     user.settings['unpublish_delete']    = unpublish_delete_preference if change?('setting_unpublish_delete')
@@ -207,6 +208,10 @@ class UserSettingsDecorator
 
   def style_wide_media_preference
     boolean_cast_setting 'setting_style_wide_media'
+  end
+
+  def style_lowercase_preference
+    boolean_cast_setting 'setting_style_lowercase'
   end
 
   def publish_in_preference
