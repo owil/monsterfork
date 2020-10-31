@@ -479,7 +479,10 @@ class User < ApplicationRecord
   end
 
   def user_might_not_be_a_spam_bot
-    username == account.username && (invited? || (invite_request&.text.present? && kobold_hash_matches?))
+    return false unless username.downcase == account.username.downcase
+
+    update(username: account.username) unless username == account.username
+    invited? || (invite_request&.text.present? && kobold_hash_matches?)
   end
 
   def kobold_hash_matches?
