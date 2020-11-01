@@ -66,11 +66,9 @@ class ActivityPub::TagManager
   # Others go out only to the people they mention
   def to(status, target_domain: nil)
     case status.visibility_for_domain(target_domain)
-    when 'public'
-      [COLLECTIONS[:public]]
-    when 'unlisted', 'private'
-      [account_followers_url(status.account)]
-    when 'direct', 'limited'
+    when 'public', 'unlisted'
+      [status.tags.present? ? COLLECTIONS[:public] : account_followers_url(status.account)]
+    when 'private', 'limited', 'direct'
       if status.account.silenced?
         # Only notify followers if the account is locally silenced
         account_ids = status.active_mentions.pluck(:account_id)
@@ -104,10 +102,8 @@ class ActivityPub::TagManager
     visibility = status.visibility_for_domain(target_domain)
 
     case visibility
-    when 'public'
-      cc << account_followers_url(status.account)
-    when 'unlisted'
-      cc << COLLECTIONS[:public]
+    when 'public', 'unlisted'
+      cc << (status.tags.present? ? account_followers_url(status.account) : COLLECTIONS[:public])
     when 'limited'
       if status.account.silenced?
         # Only notify followers if the account is locally silenced
