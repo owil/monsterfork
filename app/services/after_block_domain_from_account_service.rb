@@ -20,7 +20,7 @@ class AfterBlockDomainFromAccountService < BaseService
   private
 
   def defederate_from_domain!
-    DefederateAccountService.new.call(@account, domain)
+    DefederateAccountService.new.call(@account, @domain)
   end
 
   def remove_follows!
