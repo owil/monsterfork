@@ -68,23 +68,16 @@ class ActivityPub::TagManager
     case status.visibility_for_domain(target_domain)
     when 'public', 'unlisted'
       [status.tags.present? ? COLLECTIONS[:public] : account_followers_url(status.account)]
-    when 'private', 'limited', 'direct'
-      if status.account.silenced?
-        # Only notify followers if the account is locally silenced
-        account_ids = status.active_mentions.pluck(:account_id)
-        to = status.account.followers.where(id: account_ids).each_with_object([]) do |account, result|
-          result << uri_for(account)
-          result << account_followers_url(account) if account.group?
-        end
-        to.concat(FollowRequest.where(target_account_id: status.account_id, account_id: account_ids).each_with_object([]) do |request, result|
-          result << uri_for(request.account)
-          result << account_followers_url(request.account) if request.account.group?
-        end)
-      else
-        status.active_mentions.each_with_object([]) do |mention, result|
-          result << uri_for(mention.account)
-          result << account_followers_url(mention.account) if mention.account.group?
-        end
+    else
+      account_ids = status.active_mentions.pluck(:account_id)
+      account_ids |= status.account.follower_ids if status.private_visibility?
+
+      accounts = status.account.silenced? ? status.account.followers.where(id: account_ids) : Account.where(id: account_ids)
+      accounts = accounts.where(domain: target_domain) if target_domain.present?
+
+      accounts.each_with_object([]) do |account, result|
+        result << uri_for(account)
+        result << account_followers_url(account) if account.group?
       end
     end
   end
@@ -96,7 +89,6 @@ class ActivityPub::TagManager
   # Direct ones don't have a secondary audience
   def cc(status, target_domain: nil)
     cc = []
-
     cc << uri_for(status.reblog.account) if status.reblog?
 
     visibility = status.visibility_for_domain(target_domain)
@@ -104,44 +96,22 @@ class ActivityPub::TagManager
     case visibility
     when 'public', 'unlisted'
       cc << (status.tags.present? ? account_followers_url(status.account) : COLLECTIONS[:public])
-    when 'limited'
-      if status.account.silenced?
-        # Only notify followers if the account is locally silenced
-        account_ids = status.silent_mentions.pluck(:account_id)
-        cc.concat(status.account.followers.where(id: account_ids).each_with_object([]) do |account, result|
-          result << uri_for(account)
-          result << account_followers_url(account) if account.group?
-        end)
-        cc.concat(FollowRequest.where(target_account_id: status.account_id, account_id: account_ids).each_with_object([]) do |request, result|
-          result << uri_for(request.account)
-          result << account_followers_url(request.account) if request.account.group?
-        end)
-      else
-        cc.concat(status.silent_mentions.each_with_object([]) do |mention, result|
-          result << uri_for(mention.account)
-          result << account_followers_url(mention.account) if mention.account.group?
-        end)
-      end
+      account_ids = status.active_mentions.pluck(:account_id)
+    when 'private', 'limited'
+      account_ids = status.silent_mentions.pluck(:account_id)
+      account_ids |= status.account.follower_ids if status.private_visibility?
+    else
+      account_ids = []
     end
 
-    unless %w(direct limited).include?(visibility)
-      if status.account.silenced?
-        # Only notify followers if the account is locally silenced
-        account_ids = status.active_mentions.pluck(:account_id)
-        cc.concat(status.account.followers.where(id: account_ids).each_with_object([]) do |account, result|
-          result << uri_for(account)
-          result << account_followers_url(account) if account.group?
-        end)
-        cc.concat(FollowRequest.where(target_account_id: status.account_id, account_id: account_ids).each_with_object([]) do |request, result|
-          result << uri_for(request.account)
-          result << account_followers_url(request.account) if request.account.group?
-        end)
-      else
-        cc.concat(status.active_mentions.each_with_object([]) do |mention, result|
-          result << uri_for(mention.account)
-          result << account_followers_url(mention.account) if mention.account.group?
-        end)
-      end
+    if account_ids.present?
+      accounts = status.account.silenced? ? status.account.followers.where(id: account_ids) : Account.where(id: account_ids)
+      accounts = accounts.where(domain: target_domain) if target_domain.present?
+
+      cc.concat(accounts.each_with_object([]) do |account, result|
+        result << uri_for(account)
+        result << account_followers_url(account) if account.group?
+      end)
     end
 
     cc
