@@ -12,7 +12,7 @@ module DomainControlHelper
       end
     end
 
-    !DomainAllow.allowed?(domain) || DomainBlock.blocked?(domain)
+    domain != Rails.configuration.x.local_domain && (!DomainAllow.allowed?(domain) || DomainBlock.blocked?(domain))
   rescue Addressable::URI::InvalidURIError, IDN::Idna::IdnaError
     nil
   end
