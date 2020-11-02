@@ -659,6 +659,7 @@ class Status < ApplicationRecord
     if reply? && !thread.nil?
       self.in_reply_to_account_id = carried_over_reply_to_account_id
       self.conversation_id        = thread.conversation_id if conversation_id.nil?
+      self.visibility             = :limited if visibility.to_s == 'private' && in_reply_to_account_id != account_id
     end
   end
 
