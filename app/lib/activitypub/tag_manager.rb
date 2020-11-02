@@ -65,15 +65,15 @@ class ActivityPub::TagManager
   # Unlisted and private statuses go out primarily to the followers collection
   # Others go out only to the people they mention
   def to(status, target_domain: nil)
-    case status.visibility_for_domain(target_domain)
+    visibility = status.visibility_for_domain(target_domain)
+    case visibility
     when 'public', 'unlisted'
       [status.tags.present? ? COLLECTIONS[:public] : account_followers_url(status.account)]
     else
       account_ids = status.active_mentions.pluck(:account_id)
-      account_ids |= status.account.follower_ids if status.private_visibility?
+      account_ids |= status.account.follower_ids if visibility == 'private'
 
       accounts = status.account.silenced? ? status.account.followers.where(id: account_ids) : Account.where(id: account_ids)
-      accounts = accounts.remote.activitypub
       accounts = accounts.where(domain: target_domain) if target_domain.present?
 
       accounts.each_with_object([]) do |account, result|
@@ -99,6 +99,8 @@ class ActivityPub::TagManager
       cc << (status.tags.present? ? account_followers_url(status.account) : COLLECTIONS[:public])
       account_ids = status.active_mentions.pluck(:account_id)
     when 'private', 'limited'
+      # Work around Mastodon visibility heuritic bug by addressing instance actor.
+      cc << instance_actor_url
       account_ids = status.silent_mentions.pluck(:account_id)
     else
       account_ids = []
@@ -106,7 +108,6 @@ class ActivityPub::TagManager
 
     if account_ids.present?
       accounts = status.account.silenced? ? status.account.followers.where(id: account_ids) : Account.where(id: account_ids)
-      accounts = accounts.remote.activitypub
       accounts = accounts.where(domain: target_domain) if target_domain.present?
 
       cc.concat(accounts.each_with_object([]) do |account, result|
