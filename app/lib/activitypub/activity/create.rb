@@ -3,6 +3,7 @@
 # rubocop:disable Metrics/ClassLength
 class ActivityPub::Activity::Create < ActivityPub::Activity
   include ImgProxyHelper
+  include DomainControlHelper
 
   def perform
     dereference_object!
@@ -197,6 +198,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
     (audience_to + audience_cc).uniq.each do |audience|
       next if audience == ActivityPub::TagManager::COLLECTIONS[:public]
+      next (@params[:visibility] = :limited) if domain_not_allowed?(audience)
 
       # Unlike with tags, there is no point in resolving accounts we don't already
       # know here, because silent mentions would only be used for local access
@@ -278,6 +280,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
   def process_mention(tag)
     return if tag['href'].blank?
+    return (@params[:visibility] = :limited) if domain_not_allowed?(tag['href'])
 
     account = account_from_uri(tag['href'])
     account = ActivityPub::FetchRemoteAccountService.new.call(tag['href']) if account.nil?
