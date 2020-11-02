@@ -73,6 +73,7 @@ class ActivityPub::TagManager
       account_ids |= status.account.follower_ids if status.private_visibility?
 
       accounts = status.account.silenced? ? status.account.followers.where(id: account_ids) : Account.where(id: account_ids)
+      accounts = accounts.remote.activitypub
       accounts = accounts.where(domain: target_domain) if target_domain.present?
 
       accounts.each_with_object([]) do |account, result|
@@ -99,13 +100,13 @@ class ActivityPub::TagManager
       account_ids = status.active_mentions.pluck(:account_id)
     when 'private', 'limited'
       account_ids = status.silent_mentions.pluck(:account_id)
-      account_ids |= status.account.follower_ids if status.private_visibility?
     else
       account_ids = []
     end
 
     if account_ids.present?
       accounts = status.account.silenced? ? status.account.followers.where(id: account_ids) : Account.where(id: account_ids)
+      accounts = accounts.remote.activitypub
       accounts = accounts.where(domain: target_domain) if target_domain.present?
 
       cc.concat(accounts.each_with_object([]) do |account, result|
