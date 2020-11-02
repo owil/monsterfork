@@ -12,11 +12,9 @@ module DomainControlHelper
       end
     end
 
-    if whitelist_mode?
-      !DomainAllow.allowed?(domain)
-    else
-      DomainBlock.blocked?(domain)
-    end
+    !DomainAllow.allowed?(domain) || DomainBlock.blocked?(domain)
+  rescue Addressable::URI::InvalidURIError, IDN::Idna::IdnaError
+    nil
   end
 
   def whitelist_mode?
