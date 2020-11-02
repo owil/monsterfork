@@ -218,6 +218,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       @params[:visibility] = :limited
     end
 
+    @params[:visibility] = :limited if @params[:reply] && @params[:visibility] == :private && @mentions.pluck(:account_id).without(@account.id).present?
+
     # If the payload was delivered to a specific inbox, the inbox owner must have
     # access to it, unless they already have access to it anyway
     return if @options[:delivered_to_account_id].nil? || @mentions.any? { |mention| mention.account_id == @options[:delivered_to_account_id] }
