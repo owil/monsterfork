@@ -39,12 +39,12 @@ class UpdateStatusService < BaseService
     @params[:text]        ||= ''
     @params[:original_text] = @params[:text]
     @params[:published]     = true if @status.published?
-    @params[:local_only]    = @status.local_only? if @params[:local_only] == true && (@status.edited.positive? || @status.published?)
     @params[:edited]      ||= 1 + @status.edited if @params[:published].presence || @status.published?
     @params[:expires_at]  ||= Time.now.utc + (@status.expires_at - @status.created_at) if @status.expires_at.present?
 
     @params[:originally_local_only] = @params[:local_only] unless @status.published?
 
+    RemoveStatusService.new.call(@status, unpublish: true) if @status.published? && !@status.local_only? && @params[:local_only]
     update_tags if @status.local?
 
     @delete_payload         = Oj.dump(event: :delete, payload: @status.id.to_s)
