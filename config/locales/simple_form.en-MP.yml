@@ -27,7 +27,7 @@ en-MP:
         setting_default_content_type_bbcode_html: "<strong>[b]Bold[/b]</strong>, <u>[u]Underline[/u]</u>, <em>[i]Italic[/i]</em>, <code>[code]Console[/code]</code>, ..."
         setting_default_language: The language of your roars can be detected automatically, but it's not always accurate
         setting_filter_unknown: Strictly filter unfollowed authors, including those of boosts, from your home and list timelines.  Takes effect for newly-pushed items.
-        setting_home_reblogs: Allow packmates to boost unfollowed authors and Rowdy Tavern participants to your home timeline.  Note that enabling this option has the potential to place offensive or triggering Fediverse content in your home timeline without warning!
+        setting_home_reblogs: Allow packmates to boost unfollowed authors and Rowdy Tavern participants to your home timeline.  Note that enabling this option has the potential to place offensive or unsettling Fediverse content in your home timeline without warning!
         setting_manual_publish: This allows you to draft, proofread, and edit your roars before publishing them.  You can publish a roar from its <strong>action menu</strong> (the three dots).
         setting_max_history_public: How long public users and other servers may directly access roars on your public profile or ActivityPub outbox.
         setting_max_history_private: How long followers may directly access roars from your public profile or ActivityPub outbox. Takes precedence if shorter than the public setting. 

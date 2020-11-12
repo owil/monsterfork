@@ -7,7 +7,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   context_extensions :manually_approves_followers, :featured, :also_known_as,
                      :moved_to, :property_value, :identity_proof,
-                     :discoverable, :olm
+                     :discoverable, :olm, :suspended
 
   attributes :id, :type, :following, :followers,
              :inbox, :outbox, :featured, :featured_tags,
@@ -23,6 +23,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   attribute :devices, unless: :instance_actor?
   attribute :moved_to, if: :moved?
   attribute :also_known_as, if: :also_known_as?
+  attribute :suspended, if: :suspended?
 
   context_extensions :require_dereference, :show_replies, :private, :require_auth, :metadata, :server_metadata
   attributes :require_dereference, :show_replies, :show_unlisted, :private, :require_auth
@@ -43,7 +44,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   has_one :icon,  serializer: ActivityPub::ImageSerializer, if: :avatar_exists?
   has_one :image, serializer: ActivityPub::ImageSerializer, if: :header_exists?
 
-  delegate :moved?, :instance_actor?, to: :object
+  delegate :suspended?, :instance_actor?, to: :object
 
   def id
     object.instance_actor? ? instance_actor_url : account_url(object)
@@ -97,12 +98,16 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
     object.username
   end
 
+  def discoverable
+    object.suspended? ? false : (object.discoverable || false)
+  end
+
   def name
-    object.display_name
+    object.suspended? ? '' : object.display_name
   end
 
   def summary
-    Formatter.instance.simplified_format(object)
+    object.suspended? ? '' : Formatter.instance.simplified_format(object)
   end
 
   def icon
@@ -117,28 +122,32 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
     object
   end
 
+  def suspended
+    object.suspended?
+  end
+
   def url
     object.instance_actor? ? about_more_url(instance_actor: true) : short_account_url(object)
   end
 
   def avatar_exists?
-    object.avatar?
+    !object.suspended? && object.avatar?
   end
 
   def header_exists?
-    object.header?
+    !object.suspended? && object.header?
   end
 
   def manually_approves_followers
-    object.locked
+    object.suspended? ? false : object.locked
   end
 
   def virtual_tags
-    object.emojis + object.tags
+    object.suspended? ? [] : (object.emojis + object.tags)
   end
 
   def virtual_attachments
-    object.fields + object.identity_proofs.active
+    object.suspended? ? [] : (object.fields + object.identity_proofs.active)
   end
 
   def metadata
@@ -153,8 +162,12 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
     ActivityPub::TagManager.instance.uri_for(object.moved_to_account)
   end
 
+  def moved?
+    !object.suspended? && object.moved?
+  end
+
   def also_known_as?
-    !object.also_known_as.empty?
+    !object.suspended? && !object.also_known_as.empty?
   end
 
   class CustomEmojiSerializer < ActivityPub::EmojiSerializer
