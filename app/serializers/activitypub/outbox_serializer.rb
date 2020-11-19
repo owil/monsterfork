@@ -10,6 +10,6 @@ class ActivityPub::OutboxSerializer < ActivityPub::CollectionSerializer
   end
 
   def items
-    object.items.map { |status| ActivityPub::ActivityPresenter.from_status(status, instance_options[:domain]) }
+    object.items.map { |status| ActivityPub::ActivityPresenter.from_status(status, instance_options[:domain], embed: true) }
   end
 end
