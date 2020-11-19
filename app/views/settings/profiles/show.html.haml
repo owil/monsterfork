@@ -49,13 +49,6 @@
   .fields-group
     = f.input :require_auth, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.require_auth')
 
-  %h4= t 'settings.profiles.advanced_privacy'
-
-  %p.hint= t 'settings.profiles.advanced_privacy_html'
-
-  .fields-group
-    = f.input :require_dereference, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.require_dereference_html')
-
   %hr.spacer/
 
   .fields-row

@@ -15,7 +15,6 @@ en-MP:
         phrase: Will be matched regardless of casing in text or content warning of a roar
         private: Only allow authenticated followers to view your local profile.
         require_auth: Require viewers to log in to access your profile, roars, and threads from Monsterpit.
-        require_dereference_html: "When enabled, Monsterpit will deliver your roars to other servers as pointers and require an authenticated request to access their (non-public) content.  This allows permissions and blocks you've set to be enforced more stringently.  <strong>This feature will make your roars inaccessible from Mastodon servers older than 3.2.0.</strong>"
         setting_aggregate_reblogs: Do not show new boosts for roars that have been recently boosted (only affects newly-received boosts)
         setting_default_content_type_html: When composing roars, assume they are written in raw HTML, unless specified otherwise
         setting_default_content_type_markdown: When composing roars, assume they are using Markdown for rich text formatting, unless specified otherwise
@@ -49,7 +48,6 @@ en-MP:
         bot: This is an automated account
         private: Private mode
         require_auth: Disallow anonymous access
-        require_dereference: Indirect federation mode
         setting_crop_images: Crop images in non-expanded roars to 16x9
         setting_default_content_type: Default format for roars
         setting_default_language: Roar language

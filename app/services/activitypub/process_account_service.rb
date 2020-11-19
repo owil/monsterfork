@@ -92,7 +92,6 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.also_known_as           = as_array(@json['alsoKnownAs'] || []).map { |item| value_or_id(item) }
     @account.actor_type              = actor_type
     @account.discoverable            = @json['discoverable'] || false
-    @account.require_dereference     = @json['requireDereference'] || false
     @account.show_replies            = @json['showReplies'] || true
     @account.show_unlisted           = @json['showUnlisted'] || true
     @account.private                 = @json['private'] || false

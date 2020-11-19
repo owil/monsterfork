@@ -9,7 +9,6 @@ class ActivityPub::Adapter < ActiveModelSerializers::Adapter::Base
   CONTEXT_EXTENSION_MAP = {
     direct_message: { 'litepub': 'http://litepub.social/ns#', 'directMessage': 'litepub:directMessage' },
     edited: { 'mp' => 'https://the.monsterpit.net/ns#', 'edited' => 'mp:edited' },
-    require_dereference: { 'mp' => 'https://the.monsterpit.net/ns#', 'requireDereference' => 'mp:requireDereference' },
     show_replies: { 'mp' => 'https://the.monsterpit.net/ns#', 'showReplies' => 'mp:showReplies' },
     show_unlisted: { 'mp' => 'https://the.monsterpit.net/ns#', 'showUnlisted' => 'mp:showUnlisted' },
     private: { 'mp' => 'https://the.monsterpit.net/ns#', 'private' => 'mp:private' },

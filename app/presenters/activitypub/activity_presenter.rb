@@ -4,7 +4,7 @@ class ActivityPub::ActivityPresenter < ActiveModelSerializers::Model
   attributes :id, :type, :actor, :published, :to, :cc, :virtual_object
 
   class << self
-    def from_status(status, domain, update: false, embed: true)
+    def from_status(status, domain, update: false, embed: false)
       new.tap do |presenter|
         default_activity    = update && status.edited.positive? ? 'Update' : 'Create'
         presenter.id        = ActivityPub::TagManager.instance.activity_uri_for(status)
@@ -14,7 +14,7 @@ class ActivityPub::ActivityPresenter < ActiveModelSerializers::Model
         presenter.to        = ActivityPub::TagManager.instance.to(status, domain)
         presenter.cc        = ActivityPub::TagManager.instance.cc(status, domain)
 
-        unless embed || !status.account.require_dereference
+        unless embed && !update
           presenter.virtual_object = ActivityPub::TagManager.instance.uri_for(status.proper)
           next
         end

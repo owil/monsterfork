@@ -61,7 +61,7 @@ class ReblogService < BaseService
   end
 
   def build_json(reblog)
-    Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(reblog, reblog.account.domain, embed: false), ActivityPub::ActivitySerializer, signer: reblog.account, domain: reblog.account.domain))
+    Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(reblog, reblog.account.domain), ActivityPub::ActivitySerializer, signer: reblog.account, domain: reblog.account.domain))
   end
 
   def curate!(status)

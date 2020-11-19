@@ -22,6 +22,6 @@ class ActivityPub::UndoAnnounceSerializer < ActivityPub::Serializer
   end
 
   def virtual_object
-    ActivityPub::ActivityPresenter.from_status(object, instance_options[:domain], embed: false)
+    ActivityPub::ActivityPresenter.from_status(object, instance_options[:domain])
   end
 end

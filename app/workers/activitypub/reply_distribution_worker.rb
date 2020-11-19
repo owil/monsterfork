@@ -32,6 +32,6 @@ class ActivityPub::ReplyDistributionWorker
 
   def payload(inbox_url)
     domain = Addressable::URI.parse(inbox_url).normalized_host
-    @payload[domain] ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status, domain, update: true, embed: false), ActivityPub::ActivitySerializer, signer: @status.account, domain: domain))
+    @payload[domain] ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status, domain, update: true), ActivityPub::ActivitySerializer, signer: @status.account, domain: domain))
   end
 end

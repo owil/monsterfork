@@ -37,7 +37,7 @@ class ProcessMentionsService < BaseService
   end
 
   def activitypub_json(domain)
-    @activitypub_json[domain] ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status, domain, embed: false), ActivityPub::ActivitySerializer, signer: @status.account, domain: domain))
+    @activitypub_json[domain] ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status, domain), ActivityPub::ActivitySerializer, signer: @status.account, domain: domain))
   end
 
   def check_for_spam(status)

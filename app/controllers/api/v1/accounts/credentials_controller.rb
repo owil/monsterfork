@@ -22,7 +22,7 @@ class Api::V1::Accounts::CredentialsController < Api::BaseController
 
   def account_params
     params.permit(:display_name, :note, :avatar, :header, :locked, :bot, :discoverable,
-                  :require_dereference, :show_replies, :show_unlisted,
+                  :show_replies, :show_unlisted,
                   fields_attributes: [:name, :value])
   end
 

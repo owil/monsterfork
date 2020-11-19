@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_10_17_234926) do
+ActiveRecord::Schema.define(version: 2020_11_19_035441) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -206,7 +206,6 @@ ActiveRecord::Schema.define(version: 2020_10_17_234926) do
     t.integer "avatar_storage_schema_version"
     t.integer "header_storage_schema_version"
     t.string "devices_url"
-    t.boolean "require_dereference", default: false, null: false
     t.boolean "show_replies", default: true, null: false
     t.boolean "show_unlisted", default: true, null: false
     t.boolean "private", default: false, null: false

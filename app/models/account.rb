@@ -50,14 +50,13 @@
 #  avatar_storage_schema_version :integer
 #  header_storage_schema_version :integer
 #  devices_url                   :string
-#  sensitized_at                 :datetime
-#  suspension_origin             :integer
-#  require_dereference           :boolean          default(FALSE), not null
 #  show_replies                  :boolean          default(TRUE), not null
 #  show_unlisted                 :boolean          default(TRUE), not null
 #  private                       :boolean          default(FALSE), not null
 #  require_auth                  :boolean          default(FALSE), not null
 #  last_synced_at                :datetime
+#  sensitized_at                 :datetime
+#  suspension_origin             :integer
 #
 
 class Account < ApplicationRecord
