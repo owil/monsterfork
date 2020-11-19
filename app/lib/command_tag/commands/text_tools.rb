@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module CommandTag::Command::TextTools
+module CommandTag::Commands::TextTools
   def handle_code_at_start(args)
     return if args.count < 2
 

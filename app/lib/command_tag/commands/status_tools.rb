@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-module CommandTag::Command::StatusTools
+module CommandTag::Commands::StatusTools
   def handle_boost_once_at_start(args)
     return unless @parent.present? && StatusPolicy.new(@account, @parent).reblog?
 

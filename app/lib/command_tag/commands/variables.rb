@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module CommandTag::Command::Variables
+module CommandTag::Commands::Variables
   def handle_000_variables_startup
     @vars.merge!(persistent_vars_from(@account.metadata.fields)) if @account.metadata.present?
   end

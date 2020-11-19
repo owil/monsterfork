@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-module CommandTag::Command::FooterTools
+module CommandTag::Commands::FooterTools
   def handle_999_footertools_startup
     @status.footer = var('persist:footer:default')[0]
   end

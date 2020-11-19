@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-module CommandTag::Command::AccountTools
+module CommandTag::Commands::AccountTools
   def handle_account_at_start(args)
     return if args[0].blank?
 

@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-module CommandTag::Command::ParentStatusTools
+module CommandTag::Commands::ParentStatusTools
   def handle_publish_once_at_end(_)
     is_blank = status_text_blank?
     return PublishStatusService.new.call(@status) if @parent.blank? || !is_blank

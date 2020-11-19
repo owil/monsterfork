@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module CommandTag::Command::HelloWorld
+module CommandTag::Commands::HelloWorld
   def handle_helloworld_startup
     @vars['hello_world'] = ['Hello, world!']
   end
