@@ -206,14 +206,14 @@ ActiveRecord::Schema.define(version: 2020_10_17_234926) do
     t.integer "avatar_storage_schema_version"
     t.integer "header_storage_schema_version"
     t.string "devices_url"
-    t.integer "suspension_origin"
-    t.datetime "sensitized_at"
     t.boolean "require_dereference", default: false, null: false
     t.boolean "show_replies", default: true, null: false
     t.boolean "show_unlisted", default: true, null: false
     t.boolean "private", default: false, null: false
     t.boolean "require_auth", default: false, null: false
     t.datetime "last_synced_at"
+    t.datetime "sensitized_at"
+    t.integer "suspension_origin"
     t.index "(((setweight(to_tsvector('simple'::regconfig, (display_name)::text), 'A'::\"char\") || setweight(to_tsvector('simple'::regconfig, (username)::text), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, (COALESCE(domain, ''::character varying))::text), 'C'::\"char\")))", name: "search_index", using: :gin
     t.index "lower((username)::text), COALESCE(lower((domain)::text), ''::text)", name: "index_accounts_on_username_and_domain_lower", unique: true
     t.index ["moved_to_account_id"], name: "index_accounts_on_moved_to_account_id"
