@@ -39,7 +39,12 @@ class StatusesController < ApplicationController
 
       format.json do
         expires_in 3.minutes, public: @status.distributable? && public_fetch_mode?
-        render_with_cache json: @status, content_type: 'application/activity+json', serializer: ActivityPub::NoteSerializer, adapter: ActivityPub::Adapter, domain: current_account&.domain
+        render_with_cache json: @status,
+                          content_type: 'application/activity+json',
+                          serializer: ActivityPub::NoteSerializer,
+                          adapter: ActivityPub::Adapter,
+                          domain: current_account&.domain,
+                          key: "statuses/json:#{current_account&.id}:#{@status.id}"
       end
     end
   end
@@ -50,7 +55,8 @@ class StatusesController < ApplicationController
                       content_type: 'application/activity+json',
                       serializer: ActivityPub::ActivitySerializer,
                       adapter: ActivityPub::Adapter,
-                      domain: current_account&.domain
+                      domain: current_account&.domain,
+                      key: "statuses/activity:#{current_account&.id}:#{@status.id}"
   end
 
   def embed
