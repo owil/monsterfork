@@ -126,11 +126,11 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
   end
 
   def to
-    ActivityPub::TagManager.instance.to(object, target_domain: instance_options[:target_domain])
+    ActivityPub::TagManager.instance.to(object, instance_options[:domain])
   end
 
   def cc
-    ActivityPub::TagManager.instance.cc(object, target_domain: instance_options[:target_domain])
+    ActivityPub::TagManager.instance.cc(object, instance_options[:domain])
   end
 
   def sensitive

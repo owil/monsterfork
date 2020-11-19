@@ -64,8 +64,8 @@ class ActivityPub::TagManager
   # Public statuses go out to primarily the public collection
   # Unlisted and private statuses go out primarily to the followers collection
   # Others go out only to the people they mention
-  def to(status, target_domain: nil)
-    visibility = status.visibility_for_domain(target_domain)
+  def to(status, domain)
+    visibility = status.visibility_for_domain(domain)
     case visibility
     when 'public', 'unlisted'
       [status.tags.present? ? COLLECTIONS[:public] : account_followers_url(status.account)]
@@ -74,7 +74,7 @@ class ActivityPub::TagManager
       account_ids |= status.account.follower_ids if visibility == 'private'
 
       accounts = status.account.silenced? ? status.account.followers.where(id: account_ids) : Account.where(id: account_ids)
-      accounts = accounts.where(domain: target_domain) if target_domain.present?
+      accounts = accounts.where(domain: domain) if domain.present?
 
       accounts.each_with_object([]) do |account, result|
         result << uri_for(account)
@@ -88,11 +88,11 @@ class ActivityPub::TagManager
   # Unlisted statuses go to the public as well
   # Both of those and private statuses also go to the people mentioned in them
   # Direct ones don't have a secondary audience
-  def cc(status, target_domain: nil)
+  def cc(status, domain)
     cc = []
     cc << uri_for(status.reblog.account) if status.reblog?
 
-    visibility = status.visibility_for_domain(target_domain)
+    visibility = status.visibility_for_domain(domain)
 
     case visibility
     when 'public', 'unlisted'
@@ -108,7 +108,7 @@ class ActivityPub::TagManager
 
     if account_ids.present?
       accounts = status.account.silenced? ? status.account.followers.where(id: account_ids) : Account.where(id: account_ids)
-      accounts = accounts.where(domain: target_domain) if target_domain.present?
+      accounts = accounts.where(domain: domain) if domain.present?
 
       cc.concat(accounts.each_with_object([]) do |account, result|
         result << uri_for(account)

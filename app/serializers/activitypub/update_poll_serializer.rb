@@ -18,10 +18,10 @@ class ActivityPub::UpdatePollSerializer < ActivityPub::Serializer
   end
 
   def to
-    ActivityPub::TagManager.instance.to(object)
+    ActivityPub::TagManager.instance.to(object, instance_options[:domain])
   end
 
   def cc
-    ActivityPub::TagManager.instance.cc(object)
+    ActivityPub::TagManager.instance.cc(object, instance_options[:domain])
   end
 end

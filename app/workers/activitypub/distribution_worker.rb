@@ -15,7 +15,7 @@ class ActivityPub::DistributionWorker
     return if skip_distribution?
 
     ActivityPub::DeliveryWorker.push_bulk(inboxes) do |inbox_url|
-      [payload(Addressable::URI.parse(inbox_url).host), @account.id, inbox_url, { synchronize_followers: !@status.distributable? }]
+      [payload(inbox_url), @account.id, inbox_url, { synchronize_followers: !@status.distributable? }]
     end
 
     relay! if relayable?
@@ -46,13 +46,14 @@ class ActivityPub::DistributionWorker
                  end
   end
 
-  def payload(domain)
-    @payload[domain] ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status, update: true, embed: false), ActivityPub::ActivitySerializer, signer: @account, target_domain: domain))
+  def payload(inbox_url)
+    domain = Addressable::URI.parse(inbox_url).normalized_host
+    @payload[domain] ||= Oj.dump(serialize_payload(ActivityPub::ActivityPresenter.from_status(@status, domain, update: true, embed: false), ActivityPub::ActivitySerializer, signer: @account, domain: domain))
   end
 
   def relay!
     ActivityPub::DeliveryWorker.push_bulk(Relay.enabled.pluck(:inbox_url)) do |inbox_url|
-      [payload(Addressable::URI.parse(inbox_url).host), @account.id, inbox_url]
+      [payload(inbox_url), @account.id, inbox_url]
     end
   end
 end

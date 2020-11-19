@@ -15,7 +15,7 @@ class ActivityPub::OutboxesController < ActivityPub::BaseController
 
   def show
     expires_in(page_requested? ? 0 : 3.minutes, public: public_fetch_mode? && !(current_account.present? && page_requested?))
-    render json: outbox_presenter, serializer: ActivityPub::OutboxSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json', target_domain: current_account&.domain
+    render json: outbox_presenter, serializer: ActivityPub::OutboxSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json', domain: current_account&.domain
   end
 
   private

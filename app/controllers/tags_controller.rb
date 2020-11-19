@@ -32,7 +32,7 @@ class TagsController < ApplicationController
 
       format.json do
         expires_in 3.minutes, public: public_fetch_mode?
-        render json: collection_presenter, serializer: ActivityPub::CollectionSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json', target_domain: current_account&.domain
+        render json: collection_presenter, serializer: ActivityPub::CollectionSerializer, adapter: ActivityPub::Adapter, content_type: 'application/activity+json', domain: current_account&.domain
       end
     end
   end

@@ -19,6 +19,8 @@ class RemoveStatusService < BaseService
     @reblogs  = status.reblogs.includes(:account).to_a
     @options  = options
 
+    @signed_activity_json = {}
+
     RedisLock.acquire(lock_options) do |lock|
       if lock.acquired?
         remove_from_self if status.account.local? && !@options[:unpublish]
@@ -95,18 +97,18 @@ class RemoveStatusService < BaseService
 
     # ActivityPub
     ActivityPub::DeliveryWorker.push_bulk(target_accounts.select(&:activitypub?).uniq(&:preferred_inbox_url)) do |target_account|
-      [signed_activity_json, @account.id, target_account.preferred_inbox_url]
+      [signed_activity_json(inbox_url), @account.id, target_account.preferred_inbox_url]
     end
   end
 
   def remove_from_remote_followers
     # ActivityPub
     ActivityPub::DeliveryWorker.push_bulk(@account.followers.inboxes) do |inbox_url|
-      [signed_activity_json, @account.id, inbox_url]
+      [signed_activity_json(inbox_url), @account.id, inbox_url]
     end
 
     ActivityPub::DeliveryWorker.push_bulk(@account.following.inboxes) do |inbox_url|
-      [signed_activity_json, @account.id, inbox_url]
+      [signed_activity_json(inbox_url), @account.id, inbox_url]
     end
 
     relay! if relayable?
@@ -118,12 +120,13 @@ class RemoveStatusService < BaseService
 
   def relay!
     ActivityPub::DeliveryWorker.push_bulk(Relay.enabled.pluck(:inbox_url)) do |inbox_url|
-      [signed_activity_json(Addressable::URI.parse(inbox_url).host), @account.id, inbox_url]
+      [signed_activity_json(inbox_url), @account.id, inbox_url]
     end
   end
 
-  def signed_activity_json
-    @signed_activity_json ||= Oj.dump(serialize_payload(@status, @status.reblog? && @status.spoiler_text.blank? ? ActivityPub::UndoAnnounceSerializer : ActivityPub::DeleteSerializer, signer: @account))
+  def signed_activity_json(inbox_url)
+    domain = Addressable::URI.parse(inbox_url).normalized_host
+    @signed_activity_json[domain] ||= Oj.dump(serialize_payload(@status, @status.reblog? && @status.spoiler_text.blank? ? ActivityPub::UndoAnnounceSerializer : ActivityPub::DeleteSerializer, signer: @account, domain: domain))
   end
 
   def remove_reblogs
