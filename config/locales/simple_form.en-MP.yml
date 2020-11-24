@@ -37,7 +37,7 @@ en-MP:
         setting_skin: Reskins the selected UI flavour
         setting_unpublish_on_delete: When enabled, deleting a published roar will unpublish it then make it local-only. Deleting an unpublished roar will permanently destroy it.
         setting_web_push: After changing this option, you will need to reload the Web interface tab or window if you have it open.
-        show_replies: Disable if you'd prefer your replies not be a part of your public profile
+        show_replies: Disable if you'd prefer your replies not be a part of your public profile.
         show_unlisted: Disable if you'd prefer to only show unlisted roars on your profile page to visitors who are logged-in or are your followers.
         text: This helps us determine if registrations are made in sincerity and prevents spam. It is only visible to admins.
       user:

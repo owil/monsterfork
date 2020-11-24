@@ -153,7 +153,7 @@ en-MP:
     monsterfork: Monsterfork
     profiles:
       privacy: Privacy
-      privacy_html: These options allow you to adjust how much information is visible on your public profile on Monsterpit.  <strong>Be aware that other servers you send your roars to have their own profile systems and may not honor these options.  You will need to use <em>followers-only</em> or <em>direct</em> privacy for roars you do not want displayed in other servers' public profiles.</strong>
+      privacy_html: These options allow you to adjust how much information is visible on your public profile on Monsterpit.  <strong>Note that the "show replies" and "show unlisted" settings are only honored by servers that support Monsterfork privacy extensions.</strong>
       compatibility: Compatability
       compatibility_html: These options will increase the compatability of your account and roars with older Fediverse servers at the expense of your privacy. <strong>Only use them if you're fully aware of their possible side effects, which are beyond the scope of support from Monsterpit's developers!</strong>
   timer:
