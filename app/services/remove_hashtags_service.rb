@@ -8,7 +8,7 @@ class RemoveHashtagsService < BaseService
       featured_tag.decrement(status.id)
     end
 
-    if status.distributable?
+    if status.public_visibility?
       delete_payload = Oj.dump(event: :delete, payload: status.id.to_s)
       tags.pluck(:name).each do |hashtag|
         redis.publish("timeline:hashtag:#{hashtag.mb_chars.downcase}", delete_payload)

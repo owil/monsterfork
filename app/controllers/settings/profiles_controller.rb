@@ -21,7 +21,7 @@ class Settings::ProfilesController < Settings::BaseController
 
   def account_params
     params.require(:account).permit(:display_name, :note, :avatar, :header, :locked, :bot, :discoverable,
-                                    :show_replies, :show_unlisted, :private, :require_auth,
+                                    :show_replies, :show_unlisted, :private, :allow_anonymous, :no_verify_auth,
                                     fields_attributes: [:name, :value])
   end
 

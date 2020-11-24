@@ -53,10 +53,11 @@
 #  show_replies                  :boolean          default(TRUE), not null
 #  show_unlisted                 :boolean          default(TRUE), not null
 #  private                       :boolean          default(FALSE), not null
-#  require_auth                  :boolean          default(FALSE), not null
 #  last_synced_at                :datetime
 #  sensitized_at                 :datetime
 #  suspension_origin             :integer
+#  no_verify_auth                :boolean          default(FALSE), not null
+#  allow_anonymous               :boolean          default(FALSE), not null
 #
 
 class Account < ApplicationRecord

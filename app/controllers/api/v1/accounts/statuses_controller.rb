@@ -22,7 +22,7 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
   end
 
   def load_statuses
-    @account.suspended? ? [] : cached_account_statuses
+    unauthorized? ? [] : cached_account_statuses
   end
 
   def cached_account_statuses
@@ -39,7 +39,6 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
 
   def permitted_account_statuses
     return mentions_scope if truthy_param?(:mentions)
-    return Status.none if unauthorized?
 
     @account.statuses.permitted_for(
       @account,
@@ -58,7 +57,7 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
   end
 
   def unauthorized?
-    (@account.private && !following?(@account)) || (@account.require_auth && !current_account?)
+    @account.suspended? || (@account.private? && !following?(@account))
   end
 
   def include_reblogs?

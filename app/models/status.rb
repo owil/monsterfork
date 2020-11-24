@@ -254,7 +254,7 @@ class Status < ApplicationRecord
   end
 
   def distributable?
-    public_visibility? || unlisted_visibility?
+    !account.private? && (public_visibility? || unlisted_visibility?)
   end
 
   alias sign? distributable?
@@ -344,6 +344,7 @@ class Status < ApplicationRecord
 
   def visibility_for_domain(domain)
     return visibility.to_s if domain.blank?
+    return 'private' if account.private?
 
     v = domain_permissions.find_by(domain: [domain, '*'])&.visibility || visibility.to_s
 
@@ -659,7 +660,7 @@ class Status < ApplicationRecord
     if reply? && !thread.nil?
       self.in_reply_to_account_id = carried_over_reply_to_account_id
       self.conversation_id        = thread.conversation_id if conversation_id.nil?
-      self.visibility             = :limited if visibility.to_s == 'private' && in_reply_to_account_id != account_id
+      self.visibility             = :limited if in_reply_to_account_id != account_id && (visibility.to_s == 'private' || account.private?)
     end
   end
 

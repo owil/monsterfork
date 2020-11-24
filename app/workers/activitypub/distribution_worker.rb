@@ -30,7 +30,7 @@ class ActivityPub::DistributionWorker
   end
 
   def relayable?
-    @status.public_visibility?
+    @status.public_visibility? && !@account.private?
   end
 
   def inboxes

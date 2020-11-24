@@ -63,7 +63,6 @@ class UserSettingsDecorator
     user.settings['boost_random']        = boost_random_preference if change?('setting_boost_random')
     user.settings['filter_unknown']      = filter_unknown_preference if change?('setting_filter_unknown')
     user.settings['unpublish_on_delete'] = unpublish_on_delete_preference if change?('setting_unpublish_on_delete')
-    user.settings['rss_disabled']        = rss_disabled_preference if change?('setting_rss_disabled')
     user.settings['home_reblogs']        = home_reblogs_preference if change?('setting_home_reblogs')
     user.settings['max_history_public']  = max_history_public_preference if change?('setting_max_history_public')
     user.settings['max_history_private'] = max_history_private_preference if change?('setting_max_history_private')
@@ -244,10 +243,6 @@ class UserSettingsDecorator
 
   def unpublish_on_delete_preference
     boolean_cast_setting 'setting_unpublish_on_delete'
-  end
-
-  def rss_disabled_preference
-    boolean_cast_setting 'setting_rss_disabled'
   end
 
   def home_reblogs_preference

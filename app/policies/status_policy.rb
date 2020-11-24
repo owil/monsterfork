@@ -18,10 +18,12 @@ class StatusPolicy < ApplicationPolicy
 
     if requires_mention?
       owned? || mention_exists?
+    elsif author.private? && public?
+      !(author_blocking? || author_blocking_domain?)
     elsif private?
       owned? || following_author? || mention_exists?
     else
-      current_account.nil? || (!author_blocking? && !author_blocking_domain?)
+      current_account.nil? || !(author_blocking? || author_blocking_domain?)
     end
   end
 
@@ -80,7 +82,7 @@ class StatusPolicy < ApplicationPolicy
   end
 
   def author_blocking?
-    return author.require_auth? if current_account.nil?
+    return false if current_account.nil?
 
     @preloaded_relations[:blocked_by] ? @preloaded_relations[:blocked_by][author.id] : author.blocking?(current_account)
   end
@@ -94,13 +96,17 @@ class StatusPolicy < ApplicationPolicy
   def author
     record.account
   end
-  
+
   def local_only?
     record.local_only?
   end
 
   def published?
     record.published?
+  end
+
+  def public?
+    record.public_visibility? || record.unlisted_visibility?
   end
 
   def visibility_for_remote_domain

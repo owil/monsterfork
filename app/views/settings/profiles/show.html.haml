@@ -46,8 +46,15 @@
   .fields-group
     = f.input :private, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.private')
 
+  %h4= t 'settings.profiles.compatibility'
+
+  %p.hint= t 'settings.profiles.compatibility_html'
+
   .fields-group
-    = f.input :require_auth, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.require_auth')
+    = f.input :no_verify_auth, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.no_verify_auth_html')
+
+  .fields-group
+    = f.input :allow_anonymous, as: :boolean, wrapper: :with_label, hint: t('simple_form.hints.defaults.allow_anonymous_html')
 
   %hr.spacer/
 

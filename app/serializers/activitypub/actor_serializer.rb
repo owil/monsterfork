@@ -25,8 +25,8 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   attribute :also_known_as, if: :also_known_as?
   attribute :suspended, if: :suspended?
 
-  context_extensions :show_replies, :private, :require_auth, :metadata, :server_metadata
-  attributes :show_replies, :show_unlisted, :private, :require_auth
+  context_extensions :show_replies, :private, :metadata, :server_metadata
+  attributes :show_replies, :show_unlisted, :private
   attributes :metadata, :server_metadata
 
   class EndpointsSerializer < ActivityPub::Serializer

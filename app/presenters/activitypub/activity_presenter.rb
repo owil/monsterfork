@@ -14,7 +14,7 @@ class ActivityPub::ActivityPresenter < ActiveModelSerializers::Model
         presenter.to        = ActivityPub::TagManager.instance.to(status, domain)
         presenter.cc        = ActivityPub::TagManager.instance.cc(status, domain)
 
-        unless embed
+        unless embed || status.account.no_verify_auth?
           presenter.virtual_object = ActivityPub::TagManager.instance.uri_for(status.proper)
           next
         end

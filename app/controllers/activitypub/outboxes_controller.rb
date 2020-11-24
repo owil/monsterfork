@@ -7,11 +7,9 @@ class ActivityPub::OutboxesController < ActivityPub::BaseController
   include AccountOwnedConcern
 
   before_action :require_signature!, if: :authorized_fetch_mode?
+  before_action :require_following!, if: -> { @account.private? }
   before_action :set_statuses
   before_action :set_cache_headers
-
-  before_action :require_authenticated!, if: -> { @account.require_auth? }
-  before_action -> { require_following!(@account) }, if: -> { @account.private? }
 
   def show
     expires_in(page_requested? ? 0 : 3.minutes, public: public_fetch_mode? && !(current_account.present? && page_requested?))

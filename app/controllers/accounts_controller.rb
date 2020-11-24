@@ -8,10 +8,10 @@ class AccountsController < ApplicationController
   include SignatureAuthentication
 
   before_action :require_signature!, if: -> { request.format == :json && authorized_fetch_mode? }
+  before_action :require_authenticated!, if: -> { @account.private? }
+  before_action :require_following!, if: -> { request.format != :rss && @account.private? }
   before_action :set_cache_headers
   before_action :set_body_classes
-
-  before_action :require_authenticated!, if: -> { @account.require_auth? || @account.private? }
 
   skip_around_action :set_locale, if: -> { [:json, :rss].include?(request.format&.to_sym) }
   skip_before_action :require_functional! # , unless: :whitelist_mode?
@@ -44,7 +44,7 @@ class AccountsController < ApplicationController
       end
 
       format.rss do
-        return render xml: '', status: 404 if rss_disabled? || unauthorized?
+        return render xml: '', status: 404 if !@account.allow_anonymous? || unauthorized?
 
         expires_in 1.minute, public: !current_account?
 
@@ -180,10 +180,6 @@ class AccountsController < ApplicationController
 
   def unauthorized?
     @unauthorized ||= blocked? || (@account.private? && !following?(@account))
-  end
-
-  def rss_disabled?
-    @account.user&.setting_rss_disabled
   end
 
   def cached_filtered_status_page

@@ -8,10 +8,9 @@ class StatusesController < ApplicationController
 
   layout 'public'
 
-  before_action :require_signature!, only: :show, if: -> { request.format == :json && authorized_fetch_mode? && current_user&.account_id != @account.id }
-  before_action :require_authenticated!, if: -> { @account.require_auth? }
-  before_action -> { require_following!(@account) }, if: -> { request.format != :json && @account.private? }
+  before_action :require_signature!, only: :show, if: -> { request.format == :json && authorized_fetch_mode? }
   before_action :set_status
+  before_action :require_following!, if: -> { @account.private? && !(@status.public_visibility? || @status.unlisted_visibility?) }
   before_action :set_instance_presenter
   before_action :set_link_headers
   before_action :redirect_to_original, only: :show

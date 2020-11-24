@@ -76,7 +76,6 @@ class Settings::PreferencesController < Settings::BaseController
       :setting_boost_random,
       :setting_filter_unknown,
       :setting_unpublish_on_delete,
-      :setting_rss_disabled,
       :setting_home_reblogs,
       :setting_max_history_public,
       :setting_max_history_private,

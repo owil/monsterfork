@@ -95,7 +95,6 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.show_replies            = @json['showReplies'] || true
     @account.show_unlisted           = @json['showUnlisted'] || true
     @account.private                 = @json['private'] || false
-    @account.require_auth            = @json['require_auth'] || false
   end
 
   def set_fetchable_attributes!

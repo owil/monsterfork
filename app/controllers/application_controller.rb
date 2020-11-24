@@ -49,7 +49,7 @@ class ApplicationController < ActionController::Base
   end
 
   def authorized_fetch_mode?
-    !(Rails.env.development? || Rails.env.test?)
+    !(current_account&.allow_anonymous? || (@account&.id && current_user&.account_id == @account.id) || Rails.env.development? || Rails.env.test?)
   end
 
   def public_fetch_mode?
@@ -90,8 +90,8 @@ class ApplicationController < ActionController::Base
     end
   end
 
-  def require_following!(account)
-    forbidden unless following?(account)
+  def require_following!
+    forbidden unless @account.present? && following?(@account)
   end
 
   def after_sign_out_path_for(_resource_or_scope)

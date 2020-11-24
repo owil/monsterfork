@@ -12,7 +12,6 @@ class ActivityPub::Adapter < ActiveModelSerializers::Adapter::Base
     show_replies: { 'mp' => 'https://the.monsterpit.net/ns#', 'showReplies' => 'mp:showReplies' },
     show_unlisted: { 'mp' => 'https://the.monsterpit.net/ns#', 'showUnlisted' => 'mp:showUnlisted' },
     private: { 'mp' => 'https://the.monsterpit.net/ns#', 'private' => 'mp:private' },
-    require_auth: { 'mp' => 'https://the.monsterpit.net/ns#', 'requireAuth' => 'mp:requireAuth' },
     metadata: { 'mp' => 'https://the.monsterpit.net/ns#', 'metadata' => { '@id' => 'mp:metadata', '@type' => '@id' } },
     server_metadata: { 'mp' => 'https://the.monsterpit.net/ns#', 'serverMetadata' => { '@id' => 'mp:serverMetadata', '@type' => '@id' } },
     root: { 'mp' => 'https://the.monsterpit.net/ns#', 'root' => { '@id' => 'mp:root', '@type' => '@id' } },

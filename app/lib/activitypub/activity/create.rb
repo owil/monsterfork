@@ -462,9 +462,9 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
   def visibility_from_audience
     if audience_to.include?(ActivityPub::TagManager::COLLECTIONS[:public])
-      :public
+      @account.private? ? :private : :public
     elsif audience_cc.include?(ActivityPub::TagManager::COLLECTIONS[:public])
-      :unlisted
+      @account.private? ? :private : :unlisted
     elsif audience_to.include?(@account.followers_url)
       :private
     elsif direct_message == false

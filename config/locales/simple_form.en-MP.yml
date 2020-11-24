@@ -11,10 +11,11 @@ en-MP:
       announcement:
         text: You can use roar syntax. Please be mindful of the space the announcement will take up on the user's screen
       defaults:
+        allow_anonymous_html: "If enabled, public and unlisted roars can be read by anyone and any software without authentication. <strong>Be aware that this will allow accounts and servers you've blocked to continue accessing and redistributing your public roars!</strong>"
         irreversible: Filtered roars will disappear irreversibly, even if filter is later removed
+        no_verify_auth_html: "Deliver roars to participants on other servers without requiring their software to prove the authenticity of their accounts to Monsterpit.  Enabling this option makes it possible to interact with folks on servers using old versions of Mastodon (&lt; 3.2.0), but <strong>doing so can allow an attacker to trick Monsterpit into sending them your private roars</strong>."
         phrase: Will be matched regardless of casing in text or content warning of a roar
-        private: Only allow authenticated followers to view your local profile.
-        require_auth: Require viewers to log in to access your profile, roars, and threads from Monsterpit.
+        private: Limit the visibility of your profile to followers and force other Fediverse servers to make your roars private, reguardless of their local visibility.
         setting_aggregate_reblogs: Do not show new boosts for roars that have been recently boosted (only affects newly-received boosts)
         setting_default_content_type_html: When composing roars, assume they are written in raw HTML, unless specified otherwise
         setting_default_content_type_markdown: When composing roars, assume they are using Markdown for rich text formatting, unless specified otherwise
@@ -45,9 +46,10 @@ en-MP:
       admin_account_action:
         include_statuses: Include reported roars in the e-mail
       defaults:
+        allow_anonymous: Allow anonymous access to public roars
         bot: This is an automated account
+        no_verify_auth: Do not verify message recipients
         private: Private mode
-        require_auth: Disallow anonymous access
         setting_crop_images: Crop images in non-expanded roars to 16x9
         setting_default_content_type: Default format for roars
         setting_default_language: Roar language
