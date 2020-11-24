@@ -655,7 +655,7 @@ class Status < ApplicationRecord
     self.visibility = reblog.visibility if reblog? && visibility.nil?
     self.visibility = (account.locked? ? :private : :public) if visibility.nil?
     self.visibility = thread.visibility if should_limit_visibility?
-    self.sensitive  = false if sensitive.nil?
+    self.sensitive  = account.sensitized? if sensitive.nil?
 
     if reply? && !thread.nil?
       self.in_reply_to_account_id = carried_over_reply_to_account_id

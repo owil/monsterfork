@@ -151,7 +151,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
         language: detected_language,
         spoiler_text: converted_object_type? ? '' : (text_from_summary || ''),
         title: text_from_title,
-        sensitive: @object['sensitive'] || false,
+        sensitive: @account.sensitized? || @object['sensitive'] || false,
         visibility: visibility_from_audience,
         expires_at: @object['expires'],
         media_attachment_ids: process_attachments.take(4).map(&:id),
@@ -173,7 +173,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
         created_at: @object['published'],
         override_timestamps: @options[:override_timestamps],
         reply: @object['inReplyTo'].present?,
-        sensitive: @object['sensitive'] || false,
+        sensitive: @account.sensitized? || @object['sensitive'] || false,
         visibility: visibility_from_audience,
         thread: replied_to_status,
       }
@@ -187,7 +187,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
         language: detected_language,
         spoiler_text: converted_object_type? ? '' : (text_from_summary || ''),
         title: text_from_title,
-        sensitive: @object['sensitive'] || false,
+        sensitive: @account.sensitized? || @object['sensitive'] || false,
         visibility: visibility_from_audience,
       }
     end

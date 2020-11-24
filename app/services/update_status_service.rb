@@ -41,6 +41,7 @@ class UpdateStatusService < BaseService
     @params[:published]     = true if @status.published?
     @params[:edited]      ||= 1 + @status.edited if @params[:published].presence || @status.published?
     @params[:expires_at]  ||= Time.now.utc + (@status.expires_at - @status.created_at) if @status.expires_at.present?
+    @params[:sensitive]     = true if @account.sensitized?
 
     @params[:originally_local_only] = @params[:local_only] unless @status.published?
 
