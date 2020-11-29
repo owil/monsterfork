@@ -65,6 +65,6 @@ class ReblogService < BaseService
   end
 
   def curate!(status)
-    DistributionWorker.perform_async(status.id) if status.curate!
+    DistributionWorker.perform_async(status.id, false, true) if status.curate!
   end
 end

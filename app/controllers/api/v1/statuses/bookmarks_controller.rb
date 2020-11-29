@@ -40,6 +40,6 @@ class Api::V1::Statuses::BookmarksController < Api::BaseController
   end
 
   def curate!
-    DistributionWorker.perform_async(@status.id) if @status.curate!
+    DistributionWorker.perform_async(@status.id, false, true) if @status.curate!
   end
 end

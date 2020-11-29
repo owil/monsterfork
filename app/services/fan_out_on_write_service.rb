@@ -3,22 +3,24 @@
 class FanOutOnWriteService < BaseService
   # Push a status into home and mentions feeds
   # @param [Status] status
-  def call(status, only_to_self: false)
+  def call(status, only_to_self: false, only_to_tavern: false)
     raise Mastodon::RaceConditionError if status.visibility.nil?
 
-    deliver_to_self(status) if status.account.local?
-    return if only_to_self || !status.published?
+    unless only_to_tavern
+      deliver_to_self(status) if status.account.local?
+      return if only_to_self || !status.published?
 
-    if status.direct_visibility?
-      deliver_to_mentioned_followers(status)
-      deliver_to_direct_timelines(status)
-      deliver_to_own_conversation(status)
-    elsif status.limited_visibility?
-      deliver_to_mentioned_followers(status)
-      deliver_to_lists(status)
-    else
-      deliver_to_followers(status)
-      deliver_to_lists(status)
+      if status.direct_visibility?
+        deliver_to_mentioned_followers(status)
+        deliver_to_direct_timelines(status)
+        deliver_to_own_conversation(status)
+      elsif status.limited_visibility?
+        deliver_to_mentioned_followers(status)
+        deliver_to_lists(status)
+      else
+        deliver_to_followers(status)
+        deliver_to_lists(status)
+      end
     end
 
     return if !status.public_visibility? || status.account.silenced?
