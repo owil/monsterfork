@@ -309,11 +309,17 @@ class Status < ApplicationRecord
   end
 
   def curate!
-    update_column(:curated, true) if public_visibility? && !curated
+    return false unless !curated? && published? && public_visibility?
+
+    update_column(:curated, true)
+    true
   end
 
   def uncurate!
-    update_column(:curated, false) if curated
+    return false unless curated?
+
+    update_column(:curated, false)
+    true
   end
 
   def notify=(value)

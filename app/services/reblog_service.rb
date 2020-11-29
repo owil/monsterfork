@@ -29,7 +29,7 @@ class ReblogService < BaseService
     end
 
     reblog = account.statuses.create!(reblog: reblogged_status, text: '', visibility: visibility, rate_limit: options[:with_rate_limit], sensitive: true, spoiler_text: options[:spoiler_text] || '', published: true)
-    curate!(reblogged_status) unless reblogged_status.curated? || !reblogged_status.published?
+    curate!(reblogged_status)
 
     DistributionWorker.perform_async(reblog.id)
     ActivityPub::DistributionWorker.perform_async(reblog.id) unless reblogged_status.local_only? || reblogged_status.account.private?
@@ -65,7 +65,6 @@ class ReblogService < BaseService
   end
 
   def curate!(status)
-    status.curate!
-    DistributionWorker.perform_async(status.id)
+    DistributionWorker.perform_async(status.id) if status.curate!
   end
 end

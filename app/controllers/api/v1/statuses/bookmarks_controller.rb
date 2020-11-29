@@ -9,7 +9,7 @@ class Api::V1::Statuses::BookmarksController < Api::BaseController
 
   def create
     current_account.bookmarks.find_or_create_by!(account: current_account, status: @status)
-    curate! unless @status.curated? || !@status.published?
+    curate!
     render json: @status, serializer: REST::StatusSerializer
   end
 
@@ -40,7 +40,6 @@ class Api::V1::Statuses::BookmarksController < Api::BaseController
   end
 
   def curate!
-    @status.curate!
-    DistributionWorker.perform_async(@status.id)
+    DistributionWorker.perform_async(@status.id) if @status.curate!
   end
 end

@@ -16,7 +16,7 @@ class FavouriteService < BaseService
     return favourite unless favourite.nil?
 
     favourite = Favourite.create!(account: account, status: status)
-    curate!(status) unless status.curated? || !status.published?
+    curate!(status)
 
     create_notification(favourite)
     bump_potential_friendship(account, status)
@@ -47,7 +47,6 @@ class FavouriteService < BaseService
   end
 
   def curate!(status)
-    status.curate!
-    DistributionWorker.perform_async(status.id)
+    DistributionWorker.perform_async(status.id) if status.curate!
   end
 end
