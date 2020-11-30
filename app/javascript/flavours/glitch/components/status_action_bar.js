@@ -15,6 +15,7 @@ const messages = defineMessages({
   redraft: { id: 'status.redraft', defaultMessage: 'Delete & re-draft' },
   edit: { id: 'status.edit', defaultMessage: 'Edit' },
   publish: { id: 'status.publish', defaultMessage: 'Publish' },
+  republish: { id: 'status.republish', defaultMessage: 'Republish' },
   direct: { id: 'status.direct', defaultMessage: 'Direct message @{name}' },
   mention: { id: 'status.mention', defaultMessage: 'Mention @{name}' },
   mute: { id: 'account.mute', defaultMessage: 'Mute @{name}' },
@@ -237,6 +238,8 @@ class StatusActionBar extends ImmutablePureComponent {
 
       if (status.get('published') === false) {
         menu.push({ text: intl.formatMessage(messages.publish), action: this.handlePublishClick });
+      } else {
+        menu.push({ text: intl.formatMessage(messages.republish), action: this.handlePublishClick });
       }
     } else {
       menu.push({ text: intl.formatMessage(messages.mention, { name: status.getIn(['account', 'username']) }), action: this.handleMentionClick });

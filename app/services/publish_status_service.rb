@@ -3,26 +3,27 @@ class PublishStatusService < BaseService
   include Redisable
 
   def call(status)
-    return if status.published?
-
-    @status = status
+    @status       = status
+    republishing  = status.published?
+    status.notify = false if republishing
 
     update_status!
     reset_status_caches
     distribute
-    bump_potential_friendship!
+    bump_potential_friendship! unless republishing
   end
 
   private
 
   def update_status!
-    @status.update!(published: true, publish_at: nil, expires_at: @status.expires_at.blank? ? nil : Time.now.utc + (@status.expires_at - @status.created_at))
+    @status.update!(published: true, publish_at: nil, created_at: Time.now.utc - 1.second, expires_at: @status.expires_at.blank? ? nil : Time.now.utc + (@status.expires_at - @status.created_at))
     ProcessMentionsService.new.call(@status)
   end
 
   def reset_status_caches
     Rails.cache.delete_matched("statuses/#{@status.id}-*")
     Rails.cache.delete("statuses/#{@status.id}")
+    Rails.cache.delete("statuses/*:#{@status.id}")
     Rails.cache.delete(@status)
     Rails.cache.delete_matched("format:#{@status.id}:*")
     redis.zremrangebyscore("spam_check:#{@status.account.id}", @status.id, @status.id)

@@ -141,6 +141,7 @@ class UpdateStatusService < BaseService
   def reset_status_caches
     Rails.cache.delete_matched("statuses/#{@status.id}-*")
     Rails.cache.delete("statuses/#{@status.id}")
+    Rails.cache.delete("statuses/*:#{@status.id}")
     Rails.cache.delete(@status)
     Rails.cache.delete_matched("format:#{@status.id}:*")
     redis.zremrangebyscore("spam_check:#{@account.id}", @status.id, @status.id)
